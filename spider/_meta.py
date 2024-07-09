@@ -6,15 +6,28 @@
 @Author : zzYe
 
 """
+import asyncio
+from functools import partial
+
 import aiohttp
+
+from utils.req import get_headers
 
 
 class EVMSpider:
     def __init__(self, **kwargs):
         pass
 
-    async def fetch(self, url):
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(url)
-            content = await response.read()
+    @classmethod
+    async def fetch(cls, url):
+        async with aiohttp.ClientSession(headers=get_headers()) as session:
+            async with session.get(url) as response:
+                content = await response.text()
+                print(content)
             return content
+
+
+if __name__ == '__main__':
+    spider = EVMSpider
+    partial_coro = partial(spider.fetch, url="https://blog.csdn.net/python_dj/article/details/120059391")
+    asyncio.run(partial_coro())
