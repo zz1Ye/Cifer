@@ -6,3 +6,10 @@
 @Author : zzYe
 
 """
+from pydantic import BaseModel
+
+
+class ABI(BaseModel):
+    contract_address: str
+    abi: str
+

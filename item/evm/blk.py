@@ -6,3 +6,14 @@
 @Author : zzYe
 
 """
+from pydantic import BaseModel
+
+
+class Block(BaseModel):
+    number: int
+    hash: str
+    parent_hash: str
+    nonce: str
+    difficulty: int
+    timestamp: int
+    transactions: list

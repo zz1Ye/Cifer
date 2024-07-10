@@ -44,3 +44,27 @@ class TraceAction(BaseModel):
     gas: int
     input: str
     value: int
+
+
+# Receipt
+class Receipt(BaseModel):
+    block_number: int
+    block_hash: str
+    contract_address: str
+    from_address: str
+    logs: list
+    status: bool
+    to_address: str
+
+
+class Logs(BaseModel):
+    address: str
+    data: str
+    topics: list
+    block_number: int
+    transaction_hash: str
+    trainsaction_index: int
+    block_hash: str
+    log_index: int
+    removed: bool
+
