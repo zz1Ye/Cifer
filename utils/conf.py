@@ -9,8 +9,17 @@
 from enum import Enum
 
 
+class Vm(Enum):
+    EVM = "evm"
+
+
 class Net(Enum):
     ETH = "eth"
     BSC = "bsc"
     POL = "pol"
 
+
+class Module(Enum):
+    TX = "tx"
+    BLK = "blk"
+    SC = "sc"

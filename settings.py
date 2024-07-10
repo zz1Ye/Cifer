@@ -5,6 +5,14 @@ HEADERS_LIST = [
     'Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; AS; rv:11.0) like Gecko',
 ]
 
+
+APIS = {
+    "eth": "https://api.etherscan.io/api",
+    "bsc": "",
+    "pol": ""
+}
+
+
 API_KEYS = {
     "eth": [
         "7MM6JYY49WZBXSYFDPYQ3V7V3EMZWE4KJK"
@@ -27,4 +35,79 @@ PROVIDERS = {
     "pol": [
         "https://polygon-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
     ]
+}
+
+RPCS = {
+    "evm": {
+        "blk": {
+            "block": {
+                "url": "",
+                "method": "POST",
+                "headers": {
+                    'accept': 'application/json',
+                    'content-type': 'application/json',
+                },
+                "payload": {
+                    "id": 1,
+                    "jsonrpc": "2.0",
+                    "method": "eth_getBlockByNumber",
+                    "params": ["", True],
+                },
+            }
+        },
+        "sc": {
+            "abi": {
+                "params": {
+                    'module': 'contract',
+                    'action': 'getabi',
+                    'address': "",
+                    'apikey': ""
+                }
+            }
+        },
+        "tx": {
+            "trans": {
+                "url": "",
+                "method": "POST",
+                "headers": {
+                    'accept': 'application/json',
+                    'content-type': 'application/json',
+                },
+                "payload": {
+                    "id": 1,
+                    "jsonrpc": "2.0",
+                    "method": "eth_getTransactionByHash",
+                    "params": [""],
+                },
+            },
+            "rcpt": {
+                "url": "",
+                "method": "POST",
+                "headers": {
+                    'accept': 'application/json',
+                    'content-type': 'application/json',
+                },
+                "payload": {
+                    "id": 1,
+                    "jsonrpc": "2.0",
+                    "method": "eth_getTransactionReceipt",
+                    "params": [""]
+                },
+            },
+            "trace": {
+                "url": "",
+                "method": "POST",
+                "headers": {
+                    'accept': 'application/json',
+                    'content-type': 'application/json',
+                },
+                "payload": {
+                    "id": 1,
+                    "jsonrpc": "2.0",
+                    "method": "trace_transaction",
+                    "params": [""]
+                },
+            }
+        }
+    }
 }
