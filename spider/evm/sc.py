@@ -8,6 +8,8 @@
 """
 import asyncio
 
+import aiohttp
+
 from settings import RPC_LIST, HEADER
 from spider._meta import Spider
 from utils.conf import Net, Vm, Module
@@ -42,13 +44,16 @@ class ContractSpider(Spider):
         return await self.fetch(req)
 
 
-spider = ContractSpider(
+async def main():
+    spider = ContractSpider(
         vm=Vm.EVM,
         net=Net.ETH,
         module=Module.SC
     )
-task = spider.get(mode='abi', address="0x609c690e8F7D68a59885c9132e812eEbDaAf0c9e")
-asyncio.run(task)
+    res = await spider.get(mode='abi', address='0x609c690e8F7D68a59885c9132e812eEbDaAf0c9e')
+    print(res)
+
+# asyncio.get_event_loop().run_until_complete(main())
 
 
 

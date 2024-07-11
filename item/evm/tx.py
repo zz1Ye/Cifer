@@ -25,8 +25,17 @@ class Transaction(BaseModel):
     chain_id: int
 
 
+class TraceAction(BaseModel):
+    from_address: str
+    to_address: str
+    call_type: str
+    gas: int
+    input: str
+    value: int
+
+
 class Trace(BaseModel):
-    action: dict
+    action: TraceAction
     block_hash: str
     block_number: int
     result: dict
@@ -35,15 +44,6 @@ class Trace(BaseModel):
     transaction_hash: str
     transaction_position: int
     type: str
-
-
-class TraceAction(BaseModel):
-    from_address: str
-    to_address: str
-    call_type: str
-    gas: int
-    input: str
-    value: int
 
 
 # Receipt

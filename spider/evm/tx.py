@@ -6,6 +6,8 @@
 @Author : zzYe
 
 """
+import asyncio
+
 from settings import RPC_LIST, HEADER
 from spider._meta import Spider
 from utils.conf import Net, Vm, Module
@@ -35,5 +37,16 @@ class TransactionSpider(Spider):
         )
         return await self.fetch(req)
 
+
+async def main():
+    spider = TransactionSpider(
+        vm=Vm.EVM,
+        net=Net.ETH,
+        module=Module.TX
+    )
+    res = await spider.get(mode='trace', hash='0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8')
+    print(res)
+
+# asyncio.get_event_loop().run_until_complete(main())
 
 

@@ -9,7 +9,8 @@
 from pydantic import BaseModel
 
 
-class ABI(BaseModel):
-    contract_address: str
+class Contract(BaseModel):
+    address: str
     abi: str
+
 

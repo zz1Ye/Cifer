@@ -40,14 +40,15 @@ class Spider:
                 async with session.get(
                     url, headers=headers
                 ) as response:
-                    content = await response.text()
+                    content = await response.json()
             elif method.upper() == 'POST':
                 async with session.post(
-                    url, headers=headers,
-                    data=json.dumps(payload),
+                        url, headers=headers,
+                        data=json.dumps(payload),
                 ) as response:
-                    content = await response.text()
+                    content = await response.json()
             else:
                 raise ValueError()
-            return content
+
+        return content.get("result", None)
 
