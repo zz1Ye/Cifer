@@ -1,16 +1,19 @@
-HEADERS_LIST = [
-    'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 '
-    'Safari/537.36 Edge/16.16299',
-    'Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; AS; rv:11.0) like Gecko',
-]
-
+HEADER = {
+    'accept': 'application/json',
+    'content-type': 'application/json',
+    'user-agents': [
+        'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 '
+        'Safari/537.36 Edge/16.16299',
+        'Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; AS; rv:11.0) like Gecko',
+    ]
+}
 
 URL_DICT = {
     'evm': {
         'eth': {
             'scan': {
-                'domain': 'https://api.etherscan.io/api',
+                'domain': 'https://api-cn.etherscan.com/api',
                 'keys': [
                     "7MM6JYY49WZBXSYFDPYQ3V7V3EMZWE4KJK",
                 ]
@@ -24,7 +27,7 @@ URL_DICT = {
         },
         'bsc': {
             'scan': {
-                'domain': '',
+                'domain': 'https://api.bscscan.com/api',
                 'keys': [
                     "S7N1S396ZB98XYC5WQ3IWEPDBGJKESXH5B",
                 ]
@@ -38,7 +41,7 @@ URL_DICT = {
         },
         'pol': {
             'scan': {
-                'domain': '',
+                'domain': 'https://api.polygonscan.com/api',
                 'keys': [
                     "7BTFI86WFGAAD91X2AGSF7YWBWC3M4R39S",
                 ]
@@ -128,35 +131,35 @@ RPC_LIST = {
     }
 }
 
-APIS = {
-    "eth": "https://api.etherscan.io/api",
-    "bsc": "",
-    "pol": ""
-}
-
-
-API_KEYS = {
-    "eth": [
-        "7MM6JYY49WZBXSYFDPYQ3V7V3EMZWE4KJK"
-    ],
-    "bsc": [
-        "S7N1S396ZB98XYC5WQ3IWEPDBGJKESXH5B"
-    ],
-    "pol": [
-        "7BTFI86WFGAAD91X2AGSF7YWBWC3M4R39S"
-    ]
-}
-
-PROVIDERS = {
-    "eth": [
-        "https://mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
-    ],
-    "bsc": [
-        "https://bsc-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
-    ],
-    "pol": [
-        "https://polygon-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
-    ]
-}
+# APIS = {
+#     "eth": "https://api.etherscan.io/api",
+#     "bsc": "",
+#     "pol": ""
+# }
+#
+#
+# API_KEYS = {
+#     "eth": [
+#         "7MM6JYY49WZBXSYFDPYQ3V7V3EMZWE4KJK"
+#     ],
+#     "bsc": [
+#         "S7N1S396ZB98XYC5WQ3IWEPDBGJKESXH5B"
+#     ],
+#     "pol": [
+#         "7BTFI86WFGAAD91X2AGSF7YWBWC3M4R39S"
+#     ]
+# }
+#
+# PROVIDERS = {
+#     "eth": [
+#         "https://mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
+#     ],
+#     "bsc": [
+#         "https://bsc-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
+#     ],
+#     "pol": [
+#         "https://polygon-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
+#     ]
+# }
 
 

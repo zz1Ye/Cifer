@@ -11,7 +11,6 @@ from enum import Enum
 
 from pydantic import BaseModel
 
-from settings import HEADERS_LIST
 from urllib.parse import urlencode, urljoin
 
 
@@ -36,22 +35,36 @@ class Url(BaseModel):
 class Headers(BaseModel):
     accept: str
     content_type: str
-    user_agent: str
+    user_agents: list
 
     def get(self):
-        return {
+        return {**{
             k.replace('_', '-'): v
             for k, v in self.dict().items()
-        }
+            if k != 'user_agents'
+        }, 'user-agent': random.choice(self.user_agents)}
+
+
+class RPCNode(BaseModel):
+    domain: str
+    keys: list
+
+    def get_key(self):
+        return random.choice(self.keys)
+
+    def get(self):
+        d = self.domain if self.domain.endswith('/') else self.domain + '/'
+        k = self.get_key()
+        return '{}{}'.format(d, k)
 
 
 class Request(BaseModel):
-    url: Url
-    method: Method
+    url: str
+    method: str
     headers: dict
     payload: dict
 
 
-def get_user_agent():
-    return {'User-Agent': random.choice(HEADERS_LIST)}
+def get_random_user_agent(user_agents):
+    return random.choice(user_agents)
 

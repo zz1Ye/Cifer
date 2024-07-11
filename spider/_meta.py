@@ -10,24 +10,30 @@ import json
 
 import aiohttp
 
-from settings import APIS, PROVIDERS, API_KEYS, RPCS
+from settings import URL_DICT
 from utils.conf import Net, Vm, Module
+from utils.req import RPCNode
 
 
 class Spider:
     def __init__(self, vm: Vm, net: Net, module: Module):
-        self.vm = vm
-        self.net = net
-        self.module = module
-        self.rpc = RPCS.get(vm).get(module)
-        self.api = APIS.get(self.net)
-        self.api_keys = API_KEYS.get(self.net)
-        self.providers = PROVIDERS.get(self.net)
+        self.vm = vm.value
+        self.net = net.value
+        self.module = module.value
+        self.scan = RPCNode(
+            domain=URL_DICT.get(self.vm).get(self.net).get("scan").get("domain"),
+            keys=URL_DICT.get(self.vm).get(self.net).get("scan").get("keys"),
+        )
+        self.provider = RPCNode(
+            domain=URL_DICT.get(self.vm).get(self.net).get("provider").get("domain"),
+            keys=URL_DICT.get(self.vm).get(self.net).get("provider").get("keys"),
+        )
 
     @staticmethod
-    async def fetch(rpc):
-        url, method = rpc.get("url"), rpc.get("method")
-        headers, payload = rpc.get("headers"), rpc.get("payload")
+    async def fetch(req):
+        req = req.dict()
+        url, method = req.get("url"), req.get("method")
+        headers, payload = req.get("headers"), req.get("payload")
 
         async with aiohttp.ClientSession() as session:
             if method.upper() == 'GET':
@@ -37,11 +43,11 @@ class Spider:
                     content = await response.text()
             elif method.upper() == 'POST':
                 async with session.post(
-                    url, headers=headers, data=json.dumps(payload)
+                    url, headers=headers,
+                    data=json.dumps(payload),
                 ) as response:
                     content = await response.text()
             else:
-                raise ValueError("Unsupported HTTP method: " + method)
-
+                raise ValueError()
             return content
 
