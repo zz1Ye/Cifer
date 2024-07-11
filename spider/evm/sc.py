@@ -41,7 +41,7 @@ class ContractSpider(Spider):
             ).get(),
             payload={}
         )
-        return await self.fetch(req)
+        return {'res': await self.fetch(req), 'task': f'sc.{mode}'}
 
 
 async def main():

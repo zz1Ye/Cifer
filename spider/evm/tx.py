@@ -35,7 +35,7 @@ class TransactionSpider(Spider):
             ).get(),
             payload=payload
         )
-        return await self.fetch(req)
+        return {'res': await self.fetch(req), 'task': f'tx.{mode}'}
 
 
 async def main():

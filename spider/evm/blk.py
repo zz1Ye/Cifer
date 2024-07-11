@@ -13,6 +13,7 @@ from utils.req import Request, Headers
 
 
 class BlockSpider(Spider):
+
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
         self.rpc = RPC_LIST.get(self.vm).get(self.module)
@@ -22,7 +23,7 @@ class BlockSpider(Spider):
             raise ValueError()
 
         payload = self.rpc.get(mode).get("payload")
-        payload["params"] = [hash, True]
+        payload["params"] = [hash, False]
         req = Request(
             url=self.provider.get(),
             method=self.rpc.get(mode).get("method"),
@@ -33,4 +34,4 @@ class BlockSpider(Spider):
             ).get(),
             payload=payload
         )
-        return await self.fetch(req)
+        return {'res': await self.fetch(req), 'task': f'blk.{mode}'}
