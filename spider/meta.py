@@ -33,13 +33,13 @@ class Spider:
         raise NotImplementedError()
 
     @staticmethod
-    async def fetch(req):
+    async def fetch(req, retries: int = 3):
         req = req.dict()
         url, method = req.get("url"), req.get("method")
         headers, payload = req.get("headers"), req.get("payload")
 
         async with RetryClient(
-            retry_options=RandomRetry(attempts=3),
+            retry_options=RandomRetry(attempts=retries),
             client_session=aiohttp.ClientSession()
         ) as client:
             if method.upper() == 'GET':
