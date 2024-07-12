@@ -96,6 +96,7 @@ class PC:
     def __init__(self, source: Queue[Job], maxsize: int = 64):
         self.sq = source
         self.jq = asyncio.Queue(maxsize=maxsize)
+        self.count = 0
 
     async def producer(self):
         while True and self.sq.qsize() != 0:
@@ -108,6 +109,10 @@ class PC:
                 break
             job = await self.jq.get()
             await job.run()
+            self.count += 1
+
+            if self.count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
+                print(f"The current count of completed jobs is: {self.count}")
 
     async def run(self):
         p_worker = asyncio.create_task(self.producer())

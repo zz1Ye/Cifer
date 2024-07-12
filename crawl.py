@@ -44,7 +44,7 @@ async def main():
     output_dir = f'../out/{vm.value}'
 
     jobs = Queue()
-    # trans + trace
+    # trans + trace + rcpt
     for e in tqdm(todo):
         if e.get('net') == 'eth':
             net = Net.ETH
