@@ -54,9 +54,10 @@ class Task:
         try:
             self.status = Status.Running
             res = await self.spider.get(**self.params)
-            self.item.map(res.get('res'))
-            if self.dao.create():
-                self.dao.insert(self.item.dict())
+            if res.get('res') is not None:
+                self.item.map(res.get('res'))
+                if self.dao.create():
+                    self.dao.insert(self.item.dict())
             self.status = Status.Finished
         except Exception as _:
             self.item.map(origin)

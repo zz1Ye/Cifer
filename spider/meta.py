@@ -8,6 +8,7 @@
 """
 import json
 import aiohttp
+from aiohttp_retry import RetryClient, RandomRetry
 
 from settings import URL_DICT
 from utils.conf import Net, Vm, Module
@@ -37,14 +38,17 @@ class Spider:
         url, method = req.get("url"), req.get("method")
         headers, payload = req.get("headers"), req.get("payload")
 
-        async with aiohttp.ClientSession() as session:
+        async with RetryClient(
+            retry_options=RandomRetry(attempts=3),
+            client_session=aiohttp.ClientSession()
+        ) as client:
             if method.upper() == 'GET':
-                async with session.get(
+                async with client.get(
                     url, headers=headers
                 ) as response:
                     content = await response.json()
             elif method.upper() == 'POST':
-                async with session.post(
+                async with client.post(
                         url, headers=headers,
                         data=json.dumps(payload),
                 ) as response:
