@@ -9,7 +9,7 @@
 import asyncio
 
 from settings import RPC_LIST, HEADER
-from spider._meta import Spider
+from spider.meta import Spider
 from utils.conf import Net, Vm, Module
 from utils.req import Request, Headers
 

@@ -7,6 +7,9 @@
 
 """
 from typing import List
+
+from pydantic import Field
+
 from item.meta import Item
 
 
@@ -15,10 +18,6 @@ class Transaction(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionByHash
     """
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         self.hash = source.get('hash')
         self.transaction_index = source.get('transactionIndex')
@@ -40,32 +39,28 @@ class Transaction(Item):
         self.r = source.get('r')
         self.s = source.get('s')
 
-    hash: str
-    transaction_index: str
-    block_hash: str
-    block_number: str
-    from_address: str
-    to_address: str
-    gas: str
-    gas_price: str
-    max_fee_per_gas: str
-    max_priority_fee_per_gas: str
-    value: str
-    input: str
-    nonce: str
-    type: str
-    access_list: list
-    chain_id: str
-    v: str
-    r: str
-    s: str
+    hash: str = Field(default='')
+    transaction_index: str = Field(default='')
+    block_hash: str = Field(default='')
+    block_number: str = Field(default='')
+    from_address: str = Field(default='')
+    to_address: str = Field(default='')
+    gas: str = Field(default='')
+    gas_price: str = Field(default='')
+    max_fee_per_gas: str = Field(default='')
+    max_priority_fee_per_gas: str = Field(default='')
+    value: str = Field(default='')
+    input: str = Field(default='')
+    nonce: str = Field(default='')
+    type: str = Field(default='')
+    access_list: list = Field(default=[])
+    chain_id: str = Field(default='')
+    v: str = Field(default='')
+    r: str = Field(default='')
+    s: str = Field(default='')
 
 
 class TraceAction(Item):
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         self.from_address = source.get('from')
         self.to_address = source.get('to')
@@ -76,34 +71,26 @@ class TraceAction(Item):
         self.author = source.get('author')
         self.reward_type = source.get('rewardType')
 
-    from_address: str
-    to_address: str
-    call_type: str
-    gas: str
-    input: str
-    value: str
-    author: str
-    reward_type: str
+    from_address: str = Field(default='')
+    to_address: str = Field(default='')
+    call_type: str = Field(default='')
+    gas: str = Field(default='')
+    input: str = Field(default='')
+    value: str = Field(default='')
+    author: str = Field(default='')
+    reward_type: str = Field(default='')
 
 
 class TraceResult(Item):
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         self.gas_used = source.get('gasUsed')
         self.output = source.get('output')
 
-    gas_used: str
-    output: str
+    gas_used: str = Field(default='')
+    output: str = Field(default='')
 
 
 class TraceElement(Item):
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         action = TraceAction()
         result = TraceResult()
@@ -117,16 +104,18 @@ class TraceElement(Item):
         self.subtraces = source.get('subtraces')
         self.trace_address = source.get('traceAddress')
         self.transaction_hash = source.get('transactionHash')
+        self.transaction_position = source.get('transactionPosition')
         self.type = source.get('type')
 
-    action: TraceAction
-    block_hash: str
-    block_number: str
-    result: TraceResult
-    subtraces: str
-    trace_address: list
-    transaction_hash: str
-    type: str
+    action: TraceAction = Field(default=None)
+    block_hash: str = Field(default='')
+    block_number: int = Field(default=0)
+    result: TraceResult = Field(default=None)
+    subtraces: int = Field(default=0)
+    trace_address: list = Field(default=[])
+    transaction_hash: str = Field(default='')
+    transaction_position: int = Field(default=0)
+    type: str = Field(default='')
 
 
 class Trace(Item):
@@ -134,46 +123,38 @@ class Trace(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/trace_transaction
     """
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         array = []
-        for e in source.get('array'):
+        for e in source:
             element = TraceElement()
             element.map(e)
             array.append(element)
         self.array = array
 
-    array: List[TraceElement]
+    array: List[TraceElement] = Field(default=[])
 
 
 class ReceiptLog(Item):
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         self.address = source.get('address')
         self.data = source.get('data')
         self.topics = source.get('topics')
         self.block_number = source.get('blockNumber')
         self.transaction_hash = source.get('transactionHash')
-        self.trainsaction_index = source.get('trainsactionIndex')
+        self.trainsaction_index = source.get('transactionIndex')
         self.block_hash = source.get('blockHash')
         self.log_index = source.get('logIndex')
         self.removed = source.get('removed')
 
-    address: str
-    data: str
-    topics: list
-    block_number: int
-    transaction_hash: str
-    trainsaction_index: int
-    block_hash: str
-    log_index: int
-    removed: bool
+    address: str = Field(default='')
+    data: str = Field(default='')
+    topics: list = Field(default=[])
+    block_number: str = Field(default='')
+    transaction_hash: str = Field(default='')
+    trainsaction_index: str = Field(default='')
+    block_hash: str = Field(default='')
+    log_index: str = Field(default='')
+    removed: bool = Field(default=False)
 
 
 class Receipt(Item):
@@ -182,10 +163,6 @@ class Receipt(Item):
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionReceipt
 
     """
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
         logs = []
         for e in source.get('logs'):
@@ -205,17 +182,17 @@ class Receipt(Item):
         self.transaction_index = source.get('transactionIndex')
         self.type = source.get('type')
 
-    block_number: str
-    block_hash: str
-    contract_address: str
-    effective_gas_price: str
-    from_address: str
-    logs: List[ReceiptLog]
-    logs_bloom: str
-    status: bool
-    to_address: str
-    transaction_hash: str
-    transaction_index: str
-    type: str
+    block_number: str = Field(default='')
+    block_hash: str = Field(default='')
+    contract_address: str = Field(default='')
+    effective_gas_price: str = Field(default='')
+    from_address: str = Field(default='')
+    logs: List[ReceiptLog] = Field(default=[])
+    logs_bloom: str = Field(default='')
+    status: str = Field(default='')
+    to_address: str = Field(default='')
+    transaction_hash: str = Field(default='')
+    transaction_index: str = Field(default='')
+    type: str = Field(default='')
 
 

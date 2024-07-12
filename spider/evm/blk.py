@@ -7,13 +7,12 @@
 
 """
 from settings import RPC_LIST, HEADER
-from spider._meta import Spider
+from spider.meta import Spider
 from utils.conf import Vm, Net, Module
 from utils.req import Request, Headers
 
 
 class BlockSpider(Spider):
-
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
         self.rpc = RPC_LIST.get(self.vm).get(self.module)

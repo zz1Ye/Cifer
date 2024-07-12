@@ -6,12 +6,22 @@
 @Author : zzYe
 
 """
+import asyncio
 import csv
+from queue import Queue
 
 from tqdm import tqdm
 
-if __name__ == '__main__':
+from dao.meta import JsonDao
+from item.evm.tx import Transaction, Trace, Receipt
+from spider.evm.tx import TransactionSpider
+from utils.conf import Vm, Net, Module
+from utils.pc import Task, Job, PC
+
+
+async def main():
     csv_fpath = "out/label.csv"
+    vm = Vm.EVM
 
     todo = []
     with open(csv_fpath, mode='r', newline='', encoding='utf-8') as csvfile:
@@ -22,22 +32,50 @@ if __name__ == '__main__':
             dst_tx_hash = row.get("DstTxHash")
 
             todo.append({
-                'vm': 'evm', 'net': src.lower(),
+                'vm': vm.value, 'net': src.lower(),
                 'hash': src_tx_hash.lower()
             })
             if dst != '':
                 todo.append({
-                    'vm': 'evm', 'net': dst.lower(),
+                    'vm': vm.value, 'net': dst.lower(),
                     'hash': dst_tx_hash.lower()
                 })
 
+    output_dir = f'../out/{vm.value}'
+
+    jobs = Queue()
     # trans + trace
     for e in tqdm(todo):
-        pass
+        if e.get('net') == 'eth':
+            net = Net.ETH
+        elif e.get('net') == 'bsc':
+            net = Net.BSC
+        elif e.get('net') == 'pol':
+            net = Net.POL
+        else:
+            continue
 
-    # block + rcpt
-    for e in tqdm(todo):
-        pass
+        hash = e.get('hash').lower()
+        job = Job([
+            Task(
+                spider=TransactionSpider(
+                    vm=vm,
+                    net=net,
+                    module=Module.TX
+                ),
+                params={'mode': m, 'hash': hash},
+                item={'trans': Transaction(), 'trace': Trace(), 'rcpt': Receipt()}[m],
+                dao=JsonDao(fpath=f"{output_dir}/{net.value}/{Module.TX.value}/{hash}/{m}.json")
+            )
+            for m in ['trans', 'trace', 'rcpt']
+        ])
+        jobs.put(job)
+
+    pc = PC(jobs)
+    await pc.run()
+
+
+asyncio.get_event_loop().run_until_complete(main())
 
 
 

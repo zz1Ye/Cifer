@@ -13,6 +13,9 @@ class Dao:
     def exist(self) -> bool:
         return os.path.isfile(self.fpath)
 
+    def create(self) -> bool:
+        raise NotImplementedError()
+
     def insert(self, data: dict) -> bool:
         raise NotImplementedError()
 
