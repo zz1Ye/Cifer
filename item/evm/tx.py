@@ -8,8 +8,25 @@
 """
 from pydantic import BaseModel
 
+from item.meta import Item
 
-class Transaction(BaseModel):
+
+class Transaction(Item):
+    def map(self, source: dict):
+        self.hash = source.get('hash')
+        self.block_hash = source.get('block_hash')
+        self.block_number = source.get('block_number')
+        self.from_address = source.get('from_address')
+        self.to_address = source.get('to_address')
+        self.value = source.get('value')
+        self.timestamp = source.get('timestamp')
+        self.gas = source.get('gas')
+        self.gas_price = source.get('gas_price')
+        self.input = source.get('input')
+        self.nonce = source.get('nonce')
+        self.type = source.get('type')
+        self.chain_id = source.get('chain_id')
+
     hash: str
     block_hash: str
     block_number: int
@@ -23,6 +40,8 @@ class Transaction(BaseModel):
     nonce: str
     type: str
     chain_id: int
+
+
 
 
 class TraceAction(BaseModel):

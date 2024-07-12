@@ -18,7 +18,10 @@ class BlockSpider(Spider):
         super().__init__(vm, net, module)
         self.rpc = RPC_LIST.get(self.vm).get(self.module)
 
-    async def get(self, mode: str, hash: str):
+    async def get(self, **kwargs):
+        mode = kwargs.get('mode')
+        hash = kwargs.get('hash')
+
         if mode not in ["block"]:
             raise ValueError()
 

@@ -1,19 +1,23 @@
 import json
 import os
+import sys
 from typing import Generator, List
 
 import ijson
 
 
-class BaseDao:
+class Dao:
     def __init__(self, fpath: str):
         self.fpath = fpath
 
     def exist(self) -> bool:
         return os.path.isfile(self.fpath)
 
+    def insert(self, data: dict) -> bool:
+        raise NotImplementedError()
 
-class JsonDao(BaseDao):
+
+class JsonDao(Dao):
     def __init__(self, fpath: str):
         super().__init__(fpath)
 

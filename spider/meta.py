@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """       
-@File   : _meta.py
+@File   : meta.py
 @Time   : 2024/7/9 12:42
 @Author : zzYe
 
@@ -28,6 +28,9 @@ class Spider:
             domain=URL_DICT.get(self.vm).get(self.net).get("provider").get("domain"),
             keys=URL_DICT.get(self.vm).get(self.net).get("provider").get("keys"),
         )
+
+    def get(self, **kwargs):
+        raise NotImplementedError()
 
     @staticmethod
     async def fetch(req):

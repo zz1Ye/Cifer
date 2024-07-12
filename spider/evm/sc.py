@@ -21,7 +21,10 @@ class ContractSpider(Spider):
         super().__init__(vm, net, module)
         self.rpc = RPC_LIST.get(self.vm).get(self.module)
 
-    async def get(self, mode: str, address: str):
+    async def get(self, **kwargs):
+        mode = kwargs.get('mode')
+        address = kwargs.get('address')
+
         if mode not in ["abi"]:
             raise ValueError()
 

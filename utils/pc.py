@@ -7,13 +7,87 @@
 
 """
 import asyncio
+import hashlib
+from enum import Enum
+from typing import List
+
+from dao.meta import Dao
+from item.meta import Item
+from spider.meta import Spider
+
+
+class Status(Enum):
+    Ready = 'ready'
+    Running = 'running'
+    Finished = 'finished'
+
+
+class Task:
+    def __init__(
+            self, spider: Spider, params: dict,
+            item: Item, dao: Dao
+    ):
+        self.spider = spider
+        self.params = params
+        self.item = item
+        self.dao = dao
+        self.status = Status.Ready
+
+        _id = '{}_{}_{}'.format(
+            self.spider.__class__.__qualname__,
+            str(self.params),
+            self.item.__class__.__qualname__,
+            self.dao.__class__.__qualname__
+        )
+        self._uid = hashlib.sha256(_id.encode()).hexdigest()[:64]
+
+    def set_status(self, status: Status):
+        self.status = status
+
+    @property
+    def uid(self):
+        return self._uid
+
+    async def run(self):
+        origin = self.item.dict()
+        try:
+            self.status = Status.Running
+            res = await self.spider.get(**self.params)
+            self.item.map(res)
+            self.dao.insert(self.item.dict())
+            self.status = Status.Finished
+        except Exception as _:
+            self.item.map(origin)
+            self.status = Status.Ready
 
 
 class Job:
-    def __init__(self, name, module, task):
-        self.name = name
-        self.module = module
-        self.task = task
+    def __init__(self, tasks: List[Task]):
+        self.tasks = tasks
+        self.point = 0
+        self.status = Status.Ready
+
+    async def run(self):
+        self.status = Status.Running
+        while self.point < len(self.tasks):
+            cur = self.cur_task()
+            await cur.run()
+            self.switch_task()
+
+    def cur_task(self):
+        if self.point < len(self.tasks):
+            return self.tasks[self.point]
+        self.status = Status.Finished
+        return None
+
+    def switch_task(self):
+        if self.point < len(self.tasks):
+            self.tasks[self.point].set_status(
+                Status.Finished
+            )
+            self.point += 1
+        if self.point == len(self.tasks):
+            self.status = Status.Finished
 
 
 class PC:
