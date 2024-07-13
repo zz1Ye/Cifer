@@ -19,7 +19,7 @@ class Transaction(Item):
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionByHash
     """
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         self.hash = source.get('hash')
@@ -65,7 +65,7 @@ class Transaction(Item):
 
 class TraceAction(Item):
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         self.from_address = source.get('from')
@@ -89,7 +89,7 @@ class TraceAction(Item):
 
 class TraceResult(Item):
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         self.gas_used = source.get('gasUsed')
@@ -101,7 +101,7 @@ class TraceResult(Item):
 
 class TraceElement(Item):
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         action = TraceAction()
@@ -136,7 +136,7 @@ class Trace(Item):
         https://www.chainnodes.org/docs/ethereum/trace_transaction
     """
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         array = []
@@ -151,7 +151,7 @@ class Trace(Item):
 
 class ReceiptLog(Item):
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         self.address = source.get('address')
@@ -182,7 +182,7 @@ class Receipt(Item):
 
     """
     def map(self, source: dict):
-        if source is None:
+        if source is None or not isinstance(source, dict):
             return
 
         logs = []
