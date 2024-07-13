@@ -73,6 +73,7 @@ async def main():
             for m in ['trans', 'trace', 'rcpt']
         ])
         jobs.put(job)
+        break
 
     pc = PC(jobs)
     await pc.run()

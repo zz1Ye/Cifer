@@ -140,7 +140,7 @@ class Trace(Item):
             return
 
         array = []
-        for e in source:
+        for e in source.get('array'):
             element = TraceElement()
             element.map(e)
             array.append(element)

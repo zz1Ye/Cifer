@@ -38,6 +38,8 @@ class TransactionSpider(Spider):
             ).get(),
             payload=payload
         )
+        if mode == 'trace':
+            return {'res': {'array': await self.fetch(req)}, 'task': f'tx.{mode}'}
         return {'res': await self.fetch(req), 'task': f'tx.{mode}'}
 
 
