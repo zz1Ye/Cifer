@@ -8,6 +8,7 @@
 """
 import asyncio
 import csv
+import os
 from queue import Queue
 
 from tqdm import tqdm
@@ -24,6 +25,9 @@ async def main():
     vm = Vm.EVM
 
     todo = []
+    output_dir = f'../out/{vm.value}'
+
+    done = os.listdir(f"{output_dir}/eth/tx")
     with open(csv_fpath, mode='r', newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -41,11 +45,13 @@ async def main():
                     'hash': dst_tx_hash.lower()
                 })
 
-    output_dir = f'../out/{vm.value}'
-
     jobs = Queue()
     # trans + trace + rcpt
     for e in tqdm(todo):
+        hash = e.get('hash').lower()
+        if hash in done:
+            continue
+
         if e.get('net') == 'eth':
             net = Net.ETH
         elif e.get('net') == 'bsc':
@@ -55,7 +61,6 @@ async def main():
         else:
             continue
 
-        hash = e.get('hash').lower()
         job = Job([
             Task(
                 spider=TransactionSpider(
