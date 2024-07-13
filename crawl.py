@@ -27,7 +27,7 @@ async def main():
     todo = []
     output_dir = f'../out/{vm.value}'
 
-    done = os.listdir(f"{output_dir}/eth/tx")
+    # done = os.listdir(f"{output_dir}/eth/tx")
     with open(csv_fpath, mode='r', newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -49,8 +49,6 @@ async def main():
     # trans + trace + rcpt
     for e in tqdm(todo):
         hash = e.get('hash').lower()
-        if hash in done:
-            continue
 
         if e.get('net') == 'eth':
             net = Net.ETH

@@ -67,30 +67,15 @@ class Task:
 class Job:
     def __init__(self, tasks: List[Task]):
         self.tasks = tasks
-        self.point = 0
         self.status = Status.Ready
 
     async def run(self):
         self.status = Status.Running
-        while self.point < len(self.tasks):
-            cur = self.cur_task()
-            await cur.run()
-            self.switch_task()
-
-    def cur_task(self):
-        if self.point < len(self.tasks):
-            return self.tasks[self.point]
+        todo_tasks = []
+        for t in self.tasks:
+            todo_tasks.append(asyncio.create_task(t.run()))
+        await asyncio.gather(*todo_tasks)
         self.status = Status.Finished
-        return None
-
-    def switch_task(self):
-        if self.point < len(self.tasks):
-            self.tasks[self.point].set_status(
-                Status.Finished
-            )
-            self.point += 1
-        if self.point == len(self.tasks):
-            self.status = Status.Finished
 
 
 class PC:

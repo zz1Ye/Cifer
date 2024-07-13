@@ -106,8 +106,8 @@ class TraceElement(Item):
 
         action = TraceAction()
         result = TraceResult()
-        action.map(source.get('action') if action in source else None)
-        result.map(source.get('result') if action in source else None)
+        action.map(source.get('action') if 'action' in source else None)
+        result.map(source.get('result') if 'result' in source else None)
 
         self.action = action
         self.block_hash = source.get('blockHash')
