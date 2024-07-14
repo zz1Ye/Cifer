@@ -6,6 +6,8 @@
 @Author : zzYe
 
 """
+from pydantic import Field
+
 from item.meta import Item
 
 
@@ -14,11 +16,10 @@ class Block(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/eth_getBlockByHash
     """
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
+        if source is None or not isinstance(source, dict):
+            return
+
         self.number = source.get('number')
         self.hash = source.get('hash')
         self.parent_hash = source.get('parentHash')
@@ -37,21 +38,21 @@ class Block(Item):
         self.transactions = source.get('transactions')
         self.mix_hash = source.get('mixHash')
 
-    number: int
-    hash: str
-    parent_hash: str
-    nonce: str
-    difficulty: int
-    total_difficulty: str
-    logs_bloom: str
-    sha3uncles: str
-    extra_data: str
-    timestamp: int
-    size: str
-    transactions_root: str
-    state_root: str
-    receipts_root: str
-    uncles: list
-    transactions: list
-    mix_hash: str
+    number: int = Field(default=0)
+    hash: str = Field(default='')
+    parent_hash: str = Field(default='')
+    nonce: str = Field(default='')
+    difficulty: int = Field(default=0)
+    total_difficulty: str = Field(default='')
+    logs_bloom: str = Field(default='')
+    sha3uncles: str = Field(default='')
+    extra_data: str = Field(default='')
+    timestamp: int = Field(default=0)
+    size: str = Field(default='')
+    transactions_root: str = Field(default='')
+    state_root: str = Field(default='')
+    receipts_root: str = Field(default='')
+    uncles: list = Field(default=[])
+    transactions: list = Field(default=[])
+    mix_hash: str = Field(default='')
 

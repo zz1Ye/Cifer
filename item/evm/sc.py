@@ -6,6 +6,8 @@
 @Author : zzYe
 
 """
+from pydantic import Field
+
 from item.meta import Item
 
 
@@ -14,15 +16,14 @@ class ABI(Item):
     Url
         https://docs.ethersscan.io/api-endpoints/contracts
     """
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._values_set = False
-
     def map(self, source: dict):
+        if source is None or not isinstance(source, dict):
+            return
+
         self.address = source.get('address')
         self.abi = source.get('abi')
 
-    address: str
-    abi: str
+    address: str = Field(default='')
+    abi: str = Field(default='')
 
 
