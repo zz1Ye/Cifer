@@ -7,10 +7,11 @@
 
 """
 import asyncio
-import hashlib
 from enum import Enum
 from queue import Queue
 from typing import List
+
+from pybloom import BloomFilter
 
 from dao.meta import Dao
 from item.meta import Item
@@ -34,20 +35,19 @@ class Task:
         self.dao = dao
         self.status = Status.Ready
 
-        _id = '{}_{}_{}'.format(
+        self._id = '{}_{}_{}'.format(
             self.spider.__class__.__qualname__,
             str(self.params),
             self.item.__class__.__qualname__,
             self.dao.__class__.__qualname__
         )
-        self._uid = hashlib.sha256(_id.encode()).hexdigest()[:64]
 
     def set_status(self, status: Status):
         self.status = status
 
     @property
-    def uid(self):
-        return self._uid
+    def id(self):
+        return self._id
 
     async def run(self):
         origin = self.item.dict()
@@ -68,6 +68,11 @@ class Job:
     def __init__(self, tasks: List[Task]):
         self.tasks = tasks
         self.status = Status.Ready
+        self._id = ",".join(sorted([t.id for t in tasks]))
+
+    @property
+    def id(self):
+        return self._id
 
     async def run(self):
         self.status = Status.Running
@@ -79,10 +84,23 @@ class Job:
 
 
 class PC:
-    def __init__(self, source: Queue[Job], maxsize: int = 64):
-        self.sq = source
+    def __init__(self, source: Queue[Job], maxsize: int = 8):
+        self.sq = Queue()
         self.jq = asyncio.Queue(maxsize=maxsize)
+        self.bf = BloomFilter(capacity=1_000_000, error_rate=0.001)
+        self.wl = set()
         self.count = 0
+
+        while source:
+            job = source.get()
+            if job.id not in self.bf:
+                self.sq.put(job)
+                self.bf.add(job.id)
+                continue
+
+            if job.id not in self.wl:
+                self.sq.put(job)
+                self.wl.add(job.id)
 
     async def producer(self):
         while True and self.sq.qsize() != 0:
@@ -100,9 +118,15 @@ class PC:
             if self.count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
                 print(f"The current count of completed jobs is: {self.count}")
 
-    async def run(self):
+    async def run(self, cp_ratio: int = 2):
+        if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
+            raise ValueError()
+
         p_worker = asyncio.create_task(self.producer())
-        c_worker = asyncio.create_task(self.consumer())
-        workers = [p_worker, c_worker]
+        c_workers = [
+            asyncio.create_task(self.consumer())
+            for _ in range(cp_ratio)
+        ]
+        workers = [p_worker] + c_workers
         await asyncio.gather(*workers)
 
