@@ -8,11 +8,49 @@ all while keeping it asynchronous for that extra oomph!
 
 ## ✅ Get Ready?
 
-Before you start, enter the following command in the virtual environment.
+Before you start, please ensure that the virtual environment and network interface keys 
+are correctly configured.
+
+1️⃣ VE Setup
+
+Enter the following command in the virtual environment.
 
 ```
 pip install -r requirements.txt
 ```
+
+2️⃣ Key Setup
+
+- For Scan API Keys: Apply for API keys on blockchain explorers such as 
+[`Etherscan`](https://cn.etherscan.com),
+[`Bscscan`](https://bscscan.com), and 
+[`Polygonscan`](https://polygonscan.com).
+- For Provider API Keys: Apply for node keys on platforms like [`Chainnodes`](https://www.chainnodes.org).
+
+```python
+# settings.py
+URL_DICT = {
+    'evm': {
+        'eth': {
+            'scan': {
+                'domain': 'https://api-cn.etherscan.com/api',
+                'keys': [
+                    "",
+                ]
+            },
+            'provider': {
+                'domain': 'https://mainnet.chainnodes.org',
+                'keys': [
+                    ""
+                ]
+            }
+        },
+        # ...    
+    }
+    # ...    
+}
+```
+
 
 ## 🔰 Get Started
 
