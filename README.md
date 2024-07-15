@@ -56,12 +56,10 @@ URL_DICT = {
 
 
 
+- Command Line Mode
 
 
-Command Line Mode
-
-
-Function Call Mode
+- Function Call Mode
 
 
 

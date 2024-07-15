@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """       
-@File   : cmd.py
+@File   : cli.py
 @Time   : 2024/7/14 21:48
 @Author : zzYe
 
 """
 import argparse
+
+from utils.conf import Vm, Net, Module, Unit
 
 
 def parse_args():
@@ -20,5 +22,9 @@ def parse_args():
     parser.add_argument('-o', '--output', type=str, default='out/')
 
     args = parser.parse_args()
+
+
+def crawl(vm: Vm, net: Net, module: Module, unit: Unit):
+    pass
 
 

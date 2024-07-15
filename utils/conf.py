@@ -23,3 +23,18 @@ class Module(Enum):
     TX = "tx"
     BLK = "blk"
     SC = "sc"
+
+
+class Unit(Enum):
+    TRANS = "trans"
+    TRACE = "trace"
+    RCPT = "rcpt"
+    BLOCK = "block"
+    ABI = "abi"
+
+    SG = "subgraph"
+    EL = "eventlog"
+    IN = "input"
+    TX = "tx"
+
+
