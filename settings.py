@@ -69,7 +69,7 @@ RPC_LIST = {
                 "payload": {
                     "id": 1,
                     "jsonrpc": "2.0",
-                    "method": "eth_getBlockByNumber",
+                    "method": "eth_getBlockByHash",
                     "params": ["", True],
                 },
             }

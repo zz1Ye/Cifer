@@ -25,7 +25,8 @@ class BlockSpider(Spider):
             raise ValueError()
 
         payload = self.rpc.get(mode).get("payload")
-        payload["params"] = [hash, False]
+        payload["params"] = [hash, True]
+
         req = Request(
             url=self.provider.get(),
             method=self.rpc.get(mode).get("method"),

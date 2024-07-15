@@ -91,7 +91,7 @@ class PC:
         self.wl = set()
         self.count = 0
 
-        while source:
+        while not source.empty():
             job = source.get()
             if job.id not in self.bf:
                 self.sq.put(job)
@@ -103,7 +103,7 @@ class PC:
                 self.wl.add(job.id)
 
     async def producer(self):
-        while True and self.sq.qsize() != 0:
+        while self.sq.qsize() != 0:
             job = self.sq.get()
             await self.jq.put(job)
 
@@ -116,9 +116,10 @@ class PC:
             self.count += 1
 
             if self.count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
-                print(f"The current count of completed jobs is: {self.count}")
+                print(f"The current count of completed jobs is: {self.count}.")
 
     async def run(self, cp_ratio: int = 2):
+        print(f"Start executing, the total number of jobs is: {self.sq.qsize()}.")
         if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
             raise ValueError()
 
