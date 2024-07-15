@@ -4,16 +4,22 @@
 stealthily crawling through the web with the agility of a producer-consumer pattern, 
 all while keeping it asynchronous for that extra oomph!
 
+## ✅ Get Ready?
 
-## Get Started
+Before you start, enter the following command in the virtual environment.
 
+```
+pip install -r requirements.txt
+```
+
+
+## 🔰 Get Started
 
 xxx
 
 
 
-
-## PCP Power-Up
+## ✨ PCP Power-Up
 
 Producer-Consumer Pattern
 
