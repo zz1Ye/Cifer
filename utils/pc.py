@@ -70,7 +70,8 @@ class Task:
 
 
 class Job:
-    def __init__(self, tasks: List[Task]):
+    def __init__(self, name: str, tasks: List[Task]):
+        self.name = name
         self._tasks = tasks
         self._status = Status.READY
         self._id = ",".join(sorted([t.id for t in tasks]))

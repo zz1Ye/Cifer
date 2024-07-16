@@ -8,7 +8,7 @@
 """
 import argparse
 
-from utils.conf import Vm, Net, Module, Unit
+from utils.conf import Vm, Net, Module
 
 
 def parse_args():
@@ -25,13 +25,24 @@ def parse_args():
 
 
 def crawl(vm: Vm, net: Net, module: Module, fpath: str = None, **kwargs):
-    if Module in [Module.TX]:
+    job_dict = {}
+    if module in [Module.TRANS, Module.SG, Module.TS]:
+        hashes = kwargs.get("hashes")
+
+        for h in hashes:
+            pass
+
+
+    if module in [Module.TRACE, Module.SG]:
+        hashes = kwargs.get("hashes")
+
+    if module in [Module.RCPT]:
         pass
 
-    if Module in []:
+    if module in [Module.BLOCK, Module.TS]:
         pass
 
-    if Module in []:
+    if module in [Module.ABI, Module.IN, Module.EL]:
         pass
 
 
