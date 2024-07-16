@@ -19,9 +19,10 @@ from spider.meta import Spider
 
 
 class Status(Enum):
-    Ready = 'ready'
-    Running = 'running'
-    Finished = 'finished'
+    READY = 'ready'
+    RUNNING = 'running'
+    FINISHED = 'finished'
+    FAIL = 'fail'
 
 
 class Task:
@@ -33,8 +34,8 @@ class Task:
         self.params = params
         self.item = item
         self.dao = dao
-        self.status = Status.Ready
 
+        self._status = Status.READY
         self._id = '{}_{}_{}'.format(
             self.spider.__class__.__qualname__,
             str(self.params),
@@ -42,45 +43,57 @@ class Task:
             self.dao.__class__.__qualname__
         )
 
+    @property
+    def status(self):
+        return self._status
+
     def set_status(self, status: Status):
-        self.status = status
+        self._status = status
 
     @property
     def id(self):
         return self._id
 
     async def run(self):
-        origin = self.item.dict()
+        self._status = Status.RUNNING
         try:
-            self.status = Status.Running
             res = await self.spider.get(**self.params)
             if res.get('res') is not None:
                 self.item.map(res.get('res'))
-                if self.dao.create():
-                    self.dao.insert(self.item.dict())
-            self.status = Status.Finished
+                self.dao.create()
+                self.dao.insert(self.item.dict())
+                self._status = Status.FINISHED
+            else:
+                self._status = Status.FAIL
         except Exception as _:
-            self.item.map(origin)
-            self.status = Status.Ready
+            self._status = Status.FAIL
 
 
 class Job:
     def __init__(self, tasks: List[Task]):
-        self.tasks = tasks
-        self.status = Status.Ready
+        self._tasks = tasks
+        self._status = Status.READY
         self._id = ",".join(sorted([t.id for t in tasks]))
+
+    @property
+    def tasks(self):
+        return self._tasks
+
+    @property
+    def status(self):
+        return self._status
 
     @property
     def id(self):
         return self._id
 
     async def run(self):
-        self.status = Status.Running
+        self._status = Status.RUNNING
         todo_tasks = []
         for t in self.tasks:
             todo_tasks.append(asyncio.create_task(t.run()))
         await asyncio.gather(*todo_tasks)
-        self.status = Status.Finished
+        self._status = Status.FINISHED
 
 
 class PC:
@@ -89,6 +102,7 @@ class PC:
         self.jq = asyncio.Queue(maxsize=maxsize)
         self.bf = BloomFilter(capacity=1_000_000, error_rate=0.001)
         self.wl = set()
+        self.el = set()
         self.count = 0
 
         while not source.empty():
@@ -113,12 +127,15 @@ class PC:
                 break
             job = await self.jq.get()
             await job.run()
+            for task in job.tasks():
+                if task.status is Status.FAIL:
+                    self.el.add(task.id)
             self.count += 1
 
             if self.count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
                 print(f"The current count of completed jobs is: {self.count}.")
 
-    async def run(self, cp_ratio: int = 2):
+    async def run(self, cp_ratio: int = 4):
         print(f"Start executing, the total number of jobs is: {self.sq.qsize()}.")
         if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
             raise ValueError()
@@ -130,4 +147,5 @@ class PC:
         ]
         workers = [p_worker] + c_workers
         await asyncio.gather(*workers)
+        return list(self.el)
 

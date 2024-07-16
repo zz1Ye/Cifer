@@ -44,7 +44,11 @@ class ContractSpider(Spider):
             ).get(),
             payload={}
         )
-        return {'res': await self.fetch(req), 'task': f'sc.{mode}'}
+        res = await self.fetch(req)
+        if res is not None:
+            return {'res': {'address': address, 'abi': res}, 'task': f'sc.{mode}'}
+
+        return {'res': None, 'task': f'sc.{mode}'}
 
 
 async def main():

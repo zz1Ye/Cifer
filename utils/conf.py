@@ -20,21 +20,19 @@ class Net(Enum):
 
 
 class Module(Enum):
+    TRANS = "tx.transaction"
+    TRACE = "tx.trace"
+    RCPT = "tx.receipt"
+    BLOCK = "blk.block"
+    ABI = "sc.abi"
+
+    TS = "ps.timestamp"
+    SG = "ps.subgraph"
+    IN = "ps.input"
+    EL = "ps.eventlog"
+
     TX = "tx"
     BLK = "blk"
     SC = "sc"
-
-
-class Unit(Enum):
-    TRANS = "trans"
-    TRACE = "trace"
-    RCPT = "rcpt"
-    BLOCK = "block"
-    ABI = "abi"
-
-    SG = "subgraph"
-    EL = "eventlog"
-    IN = "input"
-    TX = "tx"
 
 
