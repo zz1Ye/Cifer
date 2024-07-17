@@ -8,7 +8,7 @@
 """
 from pydantic import Field
 
-from item.meta import Item
+from item.meta import Item, check_source
 
 
 class Block(Item):
@@ -16,10 +16,8 @@ class Block(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/eth_getBlockByHash
     """
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         self.number = source.get('number')
         self.hash = source.get('hash')
         self.parent_hash = source.get('parentHash')

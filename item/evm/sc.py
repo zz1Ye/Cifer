@@ -8,7 +8,7 @@
 """
 from pydantic import Field
 
-from item.meta import Item
+from item.meta import Item, check_source
 
 
 class ABI(Item):
@@ -16,10 +16,8 @@ class ABI(Item):
     Url
         https://docs.ethersscan.io/api-endpoints/contracts
     """
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         self.address = source.get('address')
         self.abi = source.get('abi')
 

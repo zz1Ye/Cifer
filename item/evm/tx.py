@@ -10,7 +10,7 @@ from typing import List
 
 from pydantic import Field
 
-from item.meta import Item
+from item.meta import Item, check_source
 
 
 class Transaction(Item):
@@ -18,10 +18,8 @@ class Transaction(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionByHash
     """
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         self.hash = source.get('hash')
         self.transaction_index = source.get('transactionIndex')
         self.block_hash = source.get('blockHash')
@@ -64,10 +62,8 @@ class Transaction(Item):
 
 
 class TraceAction(Item):
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         self.from_address = source.get('from')
         self.to_address = source.get('to')
         self.call_type = source.get('callType')
@@ -88,10 +84,8 @@ class TraceAction(Item):
 
 
 class TraceResult(Item):
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         self.gas_used = source.get('gasUsed')
         self.output = source.get('output')
 
@@ -100,10 +94,8 @@ class TraceResult(Item):
 
 
 class TraceElement(Item):
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         action = TraceAction()
         result = TraceResult()
         action.map(source.get('action') if 'action' in source else None)
@@ -135,10 +127,8 @@ class Trace(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/trace_transaction
     """
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         array = []
         for e in source.get('array'):
             element = TraceElement()
@@ -150,10 +140,8 @@ class Trace(Item):
 
 
 class ReceiptLog(Item):
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         self.address = source.get('address')
         self.data = source.get('data')
         self.topics = source.get('topics')
@@ -181,10 +169,8 @@ class Receipt(Item):
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionReceipt
 
     """
+    @check_source
     def map(self, source: dict):
-        if source is None or not isinstance(source, dict):
-            return
-
         logs = []
         for e in source.get('logs', []):
             log = ReceiptLog()

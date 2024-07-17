@@ -6,7 +6,18 @@
 @Author : zzYe
 
 """
+from functools import wraps
+
 from pydantic import BaseModel
+
+
+def check_source(func):
+    @wraps(func)
+    def wrapper(self, source):
+        if source is None or not isinstance(source, dict):
+            return None
+        return func(self, source)
+    return wrapper
 
 
 class Item(BaseModel):
