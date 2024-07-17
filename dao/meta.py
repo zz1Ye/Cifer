@@ -9,6 +9,14 @@ import ijson
 class Dao:
     def __init__(self, fpath: str):
         self.fpath = fpath
+        self._id = '{}{}'.format(
+            self.__class__.__qualname__,
+            fpath
+        )
+
+    @property
+    def id(self):
+        return self._id
 
     def exist(self) -> bool:
         return os.path.isfile(self.fpath)

@@ -36,11 +36,11 @@ class Task:
         self.dao = dao
 
         self._status = Status.READY
-        self._id = '{}_{}_{}'.format(
-            self.spider.__class__.__qualname__,
+        self._id = '{}_{}_{}_{}'.format(
+            self.spider.id,
             str(self.params),
-            self.item.__class__.__qualname__,
-            self.dao.__class__.__qualname__
+            self.item.id,
+            self.dao.id
         )
 
     @property
@@ -142,6 +142,12 @@ class PC:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
+    def add_job(self):
+        pass
+
+    def finish(self):
+        self._status = Status.FINISHED
 
     async def producer(self):
         while self.sq.qsize() != 0:

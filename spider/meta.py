@@ -28,6 +28,14 @@ class Spider:
             domain=URL_DICT.get(self.vm).get(self.net).get("provider").get("domain"),
             keys=URL_DICT.get(self.vm).get(self.net).get("provider").get("keys"),
         )
+        self._id = '{}_{}_{}'.format(
+            self.vm, self.net, self.module,
+            self.__class__.__qualname__
+        )
+
+    @property
+    def id(self):
+        return self._id
 
     def get(self, **kwargs):
         raise NotImplementedError()
