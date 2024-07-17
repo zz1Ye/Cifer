@@ -18,3 +18,6 @@ class TransactionParser:
         tx = trans.dict()
         tx["timestamp"] = block.timestamp
         return tx
+
+    # async def parse(self, hash: str):
+    #     tx =

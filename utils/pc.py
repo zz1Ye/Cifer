@@ -54,6 +54,16 @@ class Task:
     def id(self):
         return self._id
 
+    async def waiting(self):
+        while True:
+            if self._status in [
+                Status.FINISHED,
+                Status.FAIL
+            ]:
+                break
+            await asyncio.sleep(1)
+        return self.item
+
     async def run(self):
         self._status = Status.RUNNING
         try:
@@ -98,11 +108,22 @@ class Job:
 
 class PC:
     def __init__(self, source: Queue[Job], maxsize: int = 8):
+        """
+        Four queue: Ready/Running/Finished/Fail
+
+        :param source:
+        :param maxsize:
+        """
+        # self.re_q = Queue()
+        # self.ru_q = asyncio.Queue(maxsize=maxsize)
+        # self.fi_q = Queue()
+        # self.fa_q = Queue()
+
         self.sq = Queue()
         self.jq = asyncio.Queue(maxsize=maxsize)
         self.bf = BloomFilter(capacity=1_000_000, error_rate=0.001)
-        self.wl = set()
-        self.el = set()
+        self.wl, self.el = set(), set()
+        self._status = Status.READY
         self.count = 0
 
         while not source.empty():
@@ -115,6 +136,12 @@ class PC:
             if job.id not in self.wl:
                 self.sq.put(job)
                 self.wl.add(job.id)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
     async def producer(self):
         while self.sq.qsize() != 0:
@@ -138,6 +165,7 @@ class PC:
                 )
 
     async def run(self, cp_ratio: int = 8):
+        self._status = Status.RUNNING
         print(
             f"Start executing, the total number of jobs is: {self.sq.qsize()}."
         )
