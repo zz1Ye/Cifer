@@ -25,7 +25,7 @@ class Status(Enum):
     FAIL = 'fail'
 
 
-class Task:
+class Job:
     def __init__(
             self, spider: Spider, params: dict,
             item: Item, dao: Dao
@@ -79,96 +79,111 @@ class Task:
             self._status = Status.FAIL
 
 
-class Job:
-    def __init__(self, tasks: List[Task]):
-        self._tasks = tasks
-        self._status = Status.READY
-        self._id = ",".join(sorted([t.id for t in tasks]))
-
-    @property
-    def tasks(self):
-        return self._tasks
-
-    @property
-    def status(self):
-        return self._status
-
-    @property
-    def id(self):
-        return self._id
-
-    async def run(self):
-        self._status = Status.RUNNING
-        todo_tasks = []
-        for t in self.tasks:
-            todo_tasks.append(asyncio.create_task(t.run()))
-        await asyncio.gather(*todo_tasks)
-        self._status = Status.FINISHED
+# class Job:
+#     def __init__(self, tasks: List[Task]):
+#         self._tasks = tasks
+#         self._status = Status.READY
+#         self._id = ",".join(sorted([t.id for t in tasks]))
+#
+#     @property
+#     def tasks(self):
+#         return self._tasks
+#
+#     @property
+#     def status(self):
+#         return self._status
+#
+#     @property
+#     def id(self):
+#         return self._id
+#
+#     async def run(self):
+#         self._status = Status.RUNNING
+#         todo_tasks = []
+#         for t in self.tasks:
+#             todo_tasks.append(asyncio.create_task(t.run()))
+#         await asyncio.gather(*todo_tasks)
+#         self._status = Status.FINISHED
 
 
 class PC:
-    def __init__(self, source: Queue[Job], maxsize: int = 8):
+    def __init__(self, maxsize: int = 8):
         """
         Four queue: Ready/Running/Finished/Fail
 
-        :param source:
         :param maxsize:
         """
-        # self.re_q = Queue()
-        # self.ru_q = asyncio.Queue(maxsize=maxsize)
-        # self.fi_q = Queue()
-        # self.fa_q = Queue()
+        self.re_q = asyncio.Queue()
+        self.ru_q = asyncio.Queue(maxsize=maxsize)
+        self.fi_q = Queue()
+        self.fa_q = Queue()
 
-        self.sq = Queue()
-        self.jq = asyncio.Queue(maxsize=maxsize)
+        # self.sq = Queue()
+        # self.jq = asyncio.Queue(maxsize=maxsize)
         self.bf = BloomFilter(capacity=1_000_000, error_rate=0.001)
         self.wl, self.el = set(), set()
         self._status = Status.READY
-        self.count = 0
-
-        while not source.empty():
-            job = source.get()
-            if job.id not in self.bf:
-                self.sq.put(job)
-                self.bf.add(job.id)
-                continue
-
-            if job.id not in self.wl:
-                self.sq.put(job)
-                self.wl.add(job.id)
+        self._count = 0
 
     def __enter__(self):
         pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        self.finish()
 
-    def add_job(self):
-        pass
+    def add_jobs(self, source: Queue[Job]):
+        while not source.empty():
+            job = source.get()
+            if job.id not in self.bf:
+                self.re_q.put(job)
+                self.bf.add(job.id)
+                continue
+
+            if job.id not in self.wl:
+                self.re_q.put(job)
+                self.wl.add(job.id)
 
     def finish(self):
         self._status = Status.FINISHED
 
     async def producer(self):
-        while self.sq.qsize() != 0:
-            job = self.sq.get()
-            await self.jq.put(job)
+        while self._status != Status.FINISHED:
+            job = await self.re_q.get()
+            await self.ru_q.put(job)
+        # while self.sq.qsize() != 0:
+        #     job = self.sq.get()
+        #     await self.jq.put(job)
 
     async def consumer(self):
-        while True:
-            if self.sq.empty() and self.jq.empty():
-                break
-            job = await self.jq.get()
+        while self._status != Status.FINISHED:
+            job = await self.ru_q.get()
             await job.run()
-            for task in job.tasks:
-                if task.status is Status.FAIL:
-                    self.el.add(task.id)
-            self.count += 1
+            if job.status == Status.FINISHED:
+                self.fi_q.put(job)
 
-            if self.count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
+            if job.status == Status.FAIL:
+                self.fa_q.put(job)
+            self._count += 1
+
+            if self._count % 1000 == 0:
                 print(
-                    f"The current count of completed jobs is: {self.count}."
+                    f"The current count of completed jobs is: {self._count}."
                 )
+
+        # while True:
+        #     if self.sq.empty() and self.jq.empty():
+        #         break
+        #     job = await self.jq.get()
+        #     await job.run()
+        #     for task in job.tasks:
+        #         if task.status is Status.FAIL:
+        #             self.el.add(task.id)
+        #     self._count += 1
+        #
+        #     if self._count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
+        #         print(
+        #             f"The current count of completed jobs is: {self._count}."
+        #         )
 
     async def run(self, cp_ratio: int = 8):
         self._status = Status.RUNNING
@@ -185,5 +200,5 @@ class PC:
         ]
         workers = [p_worker] + c_workers
         await asyncio.gather(*workers)
-        return list(self.el)
+        # return list(self.el)
 
