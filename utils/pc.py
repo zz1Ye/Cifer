@@ -70,8 +70,7 @@ class Task:
 
 
 class Job:
-    def __init__(self, name: str, tasks: List[Task]):
-        self.name = name
+    def __init__(self, tasks: List[Task]):
         self._tasks = tasks
         self._status = Status.READY
         self._id = ",".join(sorted([t.id for t in tasks]))
@@ -128,16 +127,20 @@ class PC:
                 break
             job = await self.jq.get()
             await job.run()
-            for task in job.tasks():
+            for task in job.tasks:
                 if task.status is Status.FAIL:
                     self.el.add(task.id)
             self.count += 1
 
             if self.count % 1000 == 0 or (self.sq.empty() and self.jq.empty()):
-                print(f"The current count of completed jobs is: {self.count}.")
+                print(
+                    f"The current count of completed jobs is: {self.count}."
+                )
 
-    async def run(self, cp_ratio: int = 4):
-        print(f"Start executing, the total number of jobs is: {self.sq.qsize()}.")
+    async def run(self, cp_ratio: int = 8):
+        print(
+            f"Start executing, the total number of jobs is: {self.sq.qsize()}."
+        )
         if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
             raise ValueError()
 

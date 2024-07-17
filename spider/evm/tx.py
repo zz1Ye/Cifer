@@ -38,9 +38,10 @@ class TransactionSpider(Spider):
             ).get(),
             payload=payload
         )
+        res = await self.fetch(req)
         if mode == 'trace':
-            return {'res': {'array': await self.fetch(req)}, 'task': f'tx.{mode}'}
-        return {'res': await self.fetch(req), 'task': f'tx.{mode}'}
+            return {'res': res if res is None else {'array': res}, 'task': f'tx.{mode}'}
+        return {'res': res, 'task': f'tx.{mode}'}
 
 
 async def main():
