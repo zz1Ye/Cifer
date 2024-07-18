@@ -16,6 +16,7 @@ from pybloom import BloomFilter
 from dao.meta import Dao
 from item.meta import Item
 from spider.meta import Spider
+from utils.data import convert_dict_keys
 
 
 class Status(Enum):
@@ -59,8 +60,7 @@ class Job:
         try:
             if self.dao.exist():
                 source = [e for e in self.dao.load()][0][0]
-                print(source)
-                self.item.map(source)
+                self.item.map(convert_dict_keys(source))
                 self._status = Status.FINISHED
                 return self.item
 

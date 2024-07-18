@@ -9,15 +9,140 @@
 from queue import Queue
 from typing import List
 
+from web3 import Web3
+
 from dao.meta import JsonDao
 from item.evm.blk import Block
 from item.evm.ps import Timestamp
-from item.evm.tx import Transaction, Trace
+from item.evm.sc import ABI
+from item.evm.tx import Transaction, Trace, Receipt
 from spider.evm.blk import BlockSpider
+from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
 from spider.meta import Parser
 from utils.conf import Vm, Net, Module
 from utils.pc import Job, PC
+from utils.web3 import parse_hexbytes_dict
+
+
+class InputParser(Parser):
+    def __init__(self, vm: Vm, net: Net, module: Module):
+        super().__init__(vm, net, module)
+        self.w3 = Web3(Web3.HTTPProvider(
+            self.provider.get()
+        ))
+        self.trans_spider = TransactionSpider(vm, net, module)
+        self.abi_spider = ContractSpider(vm, net, module)
+
+    async def parse(self, hashes: List[str], out: str):
+        source = Queue()
+        for h in hashes:
+            for mode in ['trans', 'trace', 'rcpt']:
+                source.put(
+                    Job(
+                        spider=self.trans_spider,
+                        params={'mode': mode, 'hash': h},
+                        item={'trans': Transaction(), 'trace': Trace(), 'rcpt': Receipt()}[mode],
+                        dao=JsonDao(f"{out}/{h}/{mode}.json")
+                    )
+                )
+
+        pc = PC(source)
+        await pc.run()
+
+        tx_d = {}
+        while pc.fi_q.qsize() != 0:
+            item = pc.fi_q.get().item
+
+            if isinstance(item, Transaction):
+                item = item.dict()
+                hash = item['hash']
+                trans = Transaction()
+                trans.map(item)
+                tx_d[hash]['input'] = trans.input
+            elif isinstance(item, Receipt):
+                item = item.dict()
+                hash = item['transaction_hash']
+                rcpt = Receipt()
+                rcpt.map(item)
+                tx_d[hash]['address'] = rcpt.to_address if rcpt.contract_address is None else rcpt.contract_address
+            else:
+                item = item.dict()
+                traces = []
+                for t in item['array']:
+                    hash = t['transaction_hash']
+                    traces.append(t['action'])
+
+                tx_d[hash]['traces'] = traces
+
+        source = Queue()
+        for k, v in tx_d.items():
+            try:
+                addr = next(
+                    t["action"]["to"].lower()
+                    for t in v['traces']
+                    if (
+                            t["action"]["callType"].lower() == "delegatecall"
+                            and t["action"]["from"].lower() == v['address'].lower()
+                    )
+                )
+            except StopIteration:
+                addr = v['address']
+            source.put(
+                Job(
+                    spider=self.abi_spider,
+                    params={'mode': 'abi', 'address': addr},
+                    item=ABI(),
+                    dao=JsonDao(f"{out}/{addr}/abi.json")
+                )
+            )
+
+        pc = PC(source)
+        await pc.run()
+
+        ad_d = {}
+        while pc.fi_q.qsize() != 0:
+            item = pc.fi_q.get().item
+            item = item.dict()
+            address = item['address']
+            abi = ABI()
+            abi.map(item)
+            ad_d[address]['abi'] = abi.abi
+
+        in_d = {}
+        for k, v in tx_d:
+            function_signature = v['input'][:10]
+            input = {'func': '', 'args': {}}
+            if len(function_signature) == 10:
+                contract = self.w3.eth.contract(
+                    self.w3.to_checksum_address(v['address']),
+                    abi=ad_d[v['address']]
+                )
+                function = contract.get_function_by_selector(function_signature)
+
+                function_abi_entry = next(
+                    (
+                        abi for abi in contract.abi if
+                        abi['type'] == 'function' and abi.get('name') == function.function_identifier
+                    ), None)
+
+                if function_abi_entry:
+                    decoded_input = contract.decode_function_input(v['input'])
+
+                    args, formal_params = {}, []
+                    for param in function_abi_entry['inputs']:
+                        param_name, param_type = param['name'], param['type']
+                        param_value = decoded_input[1].get(param_name, None)
+
+                        formal_params.append(f"{param_type} {param_name}")
+                        if isinstance(param_value, bytes):
+                            args[param_name] = '0x' + param_value.hex().lstrip('0')
+                        else:
+                            args[param_name] = param_value
+
+                    input["func"] = f"{function.function_identifier}({','.join(formal_params)})"
+                    input["args"] = parse_hexbytes_dict(dict(args))
+            in_d[v['hash']] = input
 
 
 class SubgraphParser(Parser):
@@ -92,6 +217,6 @@ class TimestampParser(Parser):
             hash = item['hash']
 
             ts_d[hash] = Timestamp().map(item)
-        return ts_l
+        return ts_d
 
 
