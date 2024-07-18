@@ -6,6 +6,48 @@
 @Author : zzYe
 
 """
+import asyncio
+from queue import Queue
+
+from dao.meta import JsonDao
+from item.evm.tx import Trace
+from spider.evm.tx import TransactionSpider
+from utils.conf import Vm, Net, Module
+from utils.pc import PC, Job
+
+if __name__ == '__main__':
+    vm = Vm.EVM
+    net = Net.ETH
+    module = Module.TX
+
+    out = f"out/{vm.value}/{net.value}/{module.value}"
+    mode = 'trace'
+    hash = '0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8'
+    dao = JsonDao(fpath=f'{out}/{hash}/{mode}.json')
+
+    loop = asyncio.get_event_loop()
+    # with PC() as pc:
+    #     q = Queue()
+    #
+    #     q.put(Job(
+    #         spider=TransactionSpider(
+    #             vm=vm,
+    #             net=net,
+    #             module=module
+    #         ),
+    #         params={'mode': mode, 'hash': hash},
+    #         item=Trace(),
+    #         dao=dao
+    #     ))
+    #
+    #     task = loop.create_task(pc.add_jobs(q))
+    #     loop.run_until_complete(task)
+    #
+    #     task = loop.create_task(pc.run())
+    #     loop.run_until_complete(task)
+
+
+
 # import asyncio
 # import csv
 # import os

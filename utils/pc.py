@@ -54,35 +54,30 @@ class Job:
     def id(self):
         return self._id
 
-    async def waiting(self):
-        while True:
-            if self._status in [
-                Status.FINISHED,
-                Status.FAIL
-            ]:
-                break
-            await asyncio.sleep(1)
-        return self.item
-
     async def run(self):
         self._status = Status.RUNNING
-        if self.dao.exist():
-            source = self.dao.load()[0]
-            self.item.map(source)
-            self._status = Status.FINISHED
-            return
-
         try:
-            res = await self.spider.get(**self.params)
-            if res.get('res') is not None:
-                self.item.map(res.get('res'))
+            if self.dao.exist():
+                source = self.dao.load()[0]
+                self.item.map(source)
+                self._status = Status.FINISHED
+                return self.item
+
+            source = await self.spider.get(
+                **self.params
+            ).get('res')
+
+            if source is not None:
+                self.item.map(source)
                 self.dao.create()
                 self.dao.insert(self.item.dict())
                 self._status = Status.FINISHED
+                return self.item
             else:
                 self._status = Status.FAIL
         except Exception as _:
             self._status = Status.FAIL
+        return None
 
 
 # class Job:
@@ -113,7 +108,7 @@ class Job:
 
 
 class PC:
-    def __init__(self, maxsize: int = 8):
+    def __init__(self, source: Queue[Job], cp_ratio: int = 8, maxsize: int = 8):
         """
         Three queue: Ready/Running/Fail
 
@@ -121,39 +116,33 @@ class PC:
         """
         self.re_q = asyncio.Queue()
         self.ru_q = asyncio.Queue(maxsize=maxsize)
-        # self.fi_q = Queue()
         self.fa_q = Queue()
+
+        if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
+            raise ValueError()
+        self.cp_ratio = cp_ratio
 
         # self.sq = Queue()
         # self.jq = asyncio.Queue(maxsize=maxsize)
         self.bf = BloomFilter(capacity=1_000_000, error_rate=0.001)
         self.wl, self.el = set(), set()
-        self._status = Status.READY
-        self._count = 0
 
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.finish()
-
-    def add_jobs(self, source: Queue[Job]):
         while not source.empty():
             job = source.get()
             if job.id not in self.bf:
-                self.re_q.put(job)
+                await self.re_q.put(job)
                 self.bf.add(job.id)
                 continue
 
             if job.id not in self.wl:
-                self.re_q.put(job)
+                await self.re_q.put(job)
                 self.wl.add(job.id)
 
-    def finish(self):
-        self._status = Status.FINISHED
+        self._status = Status.READY
+        self._count = 0
 
     async def producer(self):
-        while self._status != Status.FINISHED:
+        while self.re_q.qsize() != 0:
             job = await self.re_q.get()
             await self.ru_q.put(job)
         # while self.sq.qsize() != 0:
@@ -161,7 +150,7 @@ class PC:
         #     await self.jq.put(job)
 
     async def consumer(self):
-        while self._status != Status.FINISHED:
+        while not (self.re_q.qsize() == 0 and self.ru_q.qsize() == 0):
             job = await self.ru_q.get()
             await job.run()
 
@@ -190,21 +179,20 @@ class PC:
         #             f"The current count of completed jobs is: {self._count}."
         #         )
 
-    async def run(self, cp_ratio: int = 8):
+    async def run(self):
         self._status = Status.RUNNING
         print(
             f"Start executing, the total number of jobs is: "
-            f"{self.sq.qsize()}."
+            f"{self.re_q.qsize()}."
         )
-        if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
-            raise ValueError()
 
         p_worker = asyncio.create_task(self.producer())
         c_workers = [
             asyncio.create_task(self.consumer())
-            for _ in range(cp_ratio)
+            for _ in range(self.cp_ratio)
         ]
         workers = [p_worker] + c_workers
         await asyncio.gather(*workers)
+        self._status = Status.FINISHED
         # return list(self.el)
 
