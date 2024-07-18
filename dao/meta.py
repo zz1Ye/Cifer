@@ -27,6 +27,9 @@ class Dao:
     def insert(self, data: dict) -> bool:
         raise NotImplementedError()
 
+    def load(self, batch_size: int = 1024) -> Generator[List[dict], None, None]:
+        raise NotImplementedError()
+
 
 class JsonDao(Dao):
     def __init__(self, fpath: str):
@@ -44,7 +47,7 @@ class JsonDao(Dao):
 
         return True
 
-    def load(self, batch_size: int) -> Generator[List[dict], None, None]:
+    def load(self, batch_size: int = 1024) -> Generator[List[dict], None, None]:
         with open(self.fpath, 'r', encoding='utf-8') as file:
             if file.read(1) == '':
                 return

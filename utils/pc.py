@@ -66,6 +66,12 @@ class Job:
 
     async def run(self):
         self._status = Status.RUNNING
+        if self.dao.exist():
+            source = self.dao.load()[0]
+            self.item.map(source)
+            self._status = Status.FINISHED
+            return
+
         try:
             res = await self.spider.get(**self.params)
             if res.get('res') is not None:
@@ -109,13 +115,13 @@ class Job:
 class PC:
     def __init__(self, maxsize: int = 8):
         """
-        Four queue: Ready/Running/Finished/Fail
+        Three queue: Ready/Running/Fail
 
         :param maxsize:
         """
         self.re_q = asyncio.Queue()
         self.ru_q = asyncio.Queue(maxsize=maxsize)
-        self.fi_q = Queue()
+        # self.fi_q = Queue()
         self.fa_q = Queue()
 
         # self.sq = Queue()
@@ -158,8 +164,6 @@ class PC:
         while self._status != Status.FINISHED:
             job = await self.ru_q.get()
             await job.run()
-            if job.status == Status.FINISHED:
-                self.fi_q.put(job)
 
             if job.status == Status.FAIL:
                 self.fa_q.put(job)
@@ -167,7 +171,8 @@ class PC:
 
             if self._count % 1000 == 0:
                 print(
-                    f"The current count of completed jobs is: {self._count}."
+                    f"The current count of completed jobs is: "
+                    f"{self._count}."
                 )
 
         # while True:
@@ -188,7 +193,8 @@ class PC:
     async def run(self, cp_ratio: int = 8):
         self._status = Status.RUNNING
         print(
-            f"Start executing, the total number of jobs is: {self.sq.qsize()}."
+            f"Start executing, the total number of jobs is: "
+            f"{self.sq.qsize()}."
         )
         if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
             raise ValueError()
