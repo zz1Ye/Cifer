@@ -66,3 +66,26 @@ class Spider:
 
         return content.get("result", None)
 
+
+class Parser:
+    def __init__(self, vm: Vm, net: Net, module: Module):
+        self.vm = vm.value
+        self.net = net.value
+        self.module = module.value
+        self.scan = RPCNode(
+            domain=URL_DICT.get(self.vm).get(self.net).get("scan").get("domain"),
+            keys=URL_DICT.get(self.vm).get(self.net).get("scan").get("keys"),
+        )
+        self.provider = RPCNode(
+            domain=URL_DICT.get(self.vm).get(self.net).get("provider").get("domain"),
+            keys=URL_DICT.get(self.vm).get(self.net).get("provider").get("keys"),
+        )
+        self._id = '{}_{}_{}'.format(
+            self.vm, self.net, self.module,
+            self.__class__.__qualname__
+        )
+
+    @property
+    def id(self):
+        return self._id
+

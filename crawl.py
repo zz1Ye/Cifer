@@ -11,21 +11,28 @@ from queue import Queue
 
 from dao.meta import JsonDao
 from item.evm.tx import Trace
+from spider.evm.ps import SubgraphParser
 from spider.evm.tx import TransactionSpider
 from utils.conf import Vm, Net, Module
 from utils.pc import PC, Job
 
-if __name__ == '__main__':
+
+async def main():
     vm = Vm.EVM
     net = Net.ETH
     module = Module.TX
 
     out = f"out/{vm.value}/{net.value}/{module.value}"
-    mode = 'trace'
+    parser = SubgraphParser(vm, net, module)
     hash = '0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8'
-    dao = JsonDao(fpath=f'{out}/{hash}/{mode}.json')
 
-    loop = asyncio.get_event_loop()
+    res = await parser.parse(hashes=[hash], out=out)
+    print(res)
+
+
+asyncio.get_event_loop().run_until_complete(main())
+
+    # loop = asyncio.get_event_loop()
     # with PC() as pc:
     #     q = Queue()
     #

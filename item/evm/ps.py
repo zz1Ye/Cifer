@@ -34,9 +34,11 @@ class EventLog(Item):
 class Timestamp(Item):
     @check_source
     def map(self, source: dict):
+        self.hash = source.get('hash')
         self.timestamp = source.get('timestamp')
         self.block_number = source.get('blockNumber')
 
+    hash: str = Field(default='')
     timestamp: str = Field(default='')
     block_number: str = Field(default='')
 
@@ -44,8 +46,17 @@ class Timestamp(Item):
 class Subgraph(Item):
     @check_source
     def map(self, source: dict):
-        self.edges = source.get('edges')
-        self.nodes = source.get('nodes')
+        self.hash = source.get('hash')
 
+        nodes, edges = set(), set()
+        for p in source.get('paths'):
+            edges.add(p)
+            nodes.add(p.get('from'))
+            nodes.add(p.get('to'))
+
+        self.edges = list(edges)
+        self.nodes = list(nodes)
+
+    hash: str = Field(default='')
     edges: list = Field(default=[])
     nodes: list = Field(default=[])

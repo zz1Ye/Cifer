@@ -58,14 +58,16 @@ class Job:
         self._status = Status.RUNNING
         try:
             if self.dao.exist():
-                source = self.dao.load()[0]
+                source = [e for e in self.dao.load()][0][0]
+                print(source)
                 self.item.map(source)
                 self._status = Status.FINISHED
                 return self.item
 
-            source = await self.spider.get(
+            res = await self.spider.get(
                 **self.params
-            ).get('res')
+            )
+            source = res.get('res')
 
             if source is not None:
                 self.item.map(source)
@@ -75,7 +77,8 @@ class Job:
                 return self.item
             else:
                 self._status = Status.FAIL
-        except Exception as _:
+        except Exception as e:
+            print(e)
             self._status = Status.FAIL
         return None
 
@@ -110,12 +113,13 @@ class Job:
 class PC:
     def __init__(self, source: Queue[Job], cp_ratio: int = 8, maxsize: int = 8):
         """
-        Three queue: Ready/Running/Fail
+        Four queue: Ready/Running/Finished/Fail
 
         :param maxsize:
         """
-        self.re_q = asyncio.Queue()
+        self.re_q = Queue()
         self.ru_q = asyncio.Queue(maxsize=maxsize)
+        self.fi_q = Queue()
         self.fa_q = Queue()
 
         if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
@@ -130,12 +134,12 @@ class PC:
         while not source.empty():
             job = source.get()
             if job.id not in self.bf:
-                await self.re_q.put(job)
+                self.re_q.put(job)
                 self.bf.add(job.id)
                 continue
 
             if job.id not in self.wl:
-                await self.re_q.put(job)
+                self.re_q.put(job)
                 self.wl.add(job.id)
 
         self._status = Status.READY
@@ -143,7 +147,7 @@ class PC:
 
     async def producer(self):
         while self.re_q.qsize() != 0:
-            job = await self.re_q.get()
+            job = self.re_q.get()
             await self.ru_q.put(job)
         # while self.sq.qsize() != 0:
         #     job = self.sq.get()
@@ -154,7 +158,9 @@ class PC:
             job = await self.ru_q.get()
             await job.run()
 
-            if job.status == Status.FAIL:
+            if job.status == Status.FINISHED:
+                self.fi_q.put(job)
+            else:
                 self.fa_q.put(job)
             self._count += 1
 
