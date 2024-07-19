@@ -21,6 +21,7 @@ class ABI(Item):
     def map(self, source: dict):
         self.address = source.get('address')
         self.abi = source.get('abi')
+        return self
 
     address: str = Field(default='')
     abi: str = Field(default='')

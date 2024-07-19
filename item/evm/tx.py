@@ -40,6 +40,7 @@ class Transaction(Item):
         self.v = source.get('v')
         self.r = source.get('r')
         self.s = source.get('s')
+        return self
 
     hash: str = Field(default='')
     transaction_index: str = Field(default='')
@@ -74,6 +75,7 @@ class TraceAction(Item):
         self.value = source.get('value')
         self.author = source.get('author')
         self.reward_type = source.get('rewardType')
+        return self
 
     from_: str = Field(default='')
     to_: str = Field(default='')
@@ -91,6 +93,7 @@ class TraceResult(Item):
     def map(self, source: dict):
         self.gas_used = source.get('gasUsed')
         self.output = source.get('output')
+        return self
 
     gas_used: str = Field(default='')
     output: str = Field(default='')
@@ -114,6 +117,7 @@ class TraceElement(Item):
         self.transaction_hash = source.get('transactionHash')
         self.transaction_position = source.get('transactionPosition')
         self.type = source.get('type')
+        return self
 
     action: TraceAction = Field(default=None)
     block_hash: str = Field(default='')
@@ -140,6 +144,7 @@ class Trace(Item):
             element.map(e)
             array.append(element)
         self.array = array
+        return self
 
     array: List[TraceElement] = Field(default=[])
 
@@ -157,6 +162,7 @@ class ReceiptLog(Item):
         self.block_hash = source.get('blockHash')
         self.log_index = source.get('logIndex')
         self.removed = source.get('removed')
+        return self
 
     address: str = Field(default='')
     data: str = Field(default='')
@@ -195,6 +201,7 @@ class Receipt(Item):
         self.transaction_hash = source.get('transactionHash')
         self.transaction_index = source.get('transactionIndex')
         self.type = source.get('type')
+        return self
 
     block_number: str = Field(default='')
     block_hash: str = Field(default='')

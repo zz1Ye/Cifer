@@ -40,6 +40,7 @@ class Block(Item):
         self.gas_limit = source.get('gasLimit')
         self.mix_hash = source.get('mixHash')
         self.base_fee_per_gas = source.get('baseFeePerGas')
+        return self
 
     number: str = Field(default='')
     hash: str = Field(default='')

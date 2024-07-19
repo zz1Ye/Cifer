@@ -17,6 +17,7 @@ class Input(Item):
     def map(self, source: dict):
         self.func = source.get('func')
         self.args = source.get('args')
+        return self
 
     func: str = Field(default='')
     args: dict = Field(default={})
@@ -28,6 +29,7 @@ class EventLog(Item):
     def map(self, source: dict):
         self.event = source.get('event')
         self.args = source.get('args')
+        return self
 
     event: str = Field(default='')
     args: dict = Field(default={})
@@ -40,6 +42,7 @@ class Timestamp(Item):
         self.hash = source.get('hash')
         self.timestamp = source.get('timestamp')
         self.block_number = source.get('blockNumber')
+        return self
 
     hash: str = Field(default='')
     timestamp: str = Field(default='')
@@ -60,6 +63,7 @@ class Subgraph(Item):
 
         self.edges = list(edges)
         self.nodes = list(nodes)
+        return self
 
     hash: str = Field(default='')
     edges: list = Field(default=[])
