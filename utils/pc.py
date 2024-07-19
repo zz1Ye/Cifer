@@ -60,7 +60,7 @@ class Job:
         try:
             if self.dao.exist():
                 source = [e for e in self.dao.load()][0][0]
-                self.item.map(snake_keys_to_camel(source))
+                self.item.map(source)
                 self._status = Status.FINISHED
                 return self.item
 
@@ -68,7 +68,6 @@ class Job:
                 **self.params
             )
             source = res.get('res')
-
             if source is not None:
                 self.item.map(source)
                 self.dao.create()

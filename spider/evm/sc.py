@@ -27,7 +27,6 @@ class ContractSpider(Spider):
 
         if mode not in ["abi"]:
             raise ValueError()
-
         params = {
             'module': self.rpc.get(mode).get("params").get("module"),
             'action': self.rpc.get(mode).get("params").get("action"),
