@@ -59,12 +59,16 @@ class InputParser(Parser):
                 hash = item['hash']
                 trans = Transaction()
                 trans.map(item)
+                if hash not in tx_d:
+                    tx_d[hash] = {}
                 tx_d[hash]['input'] = trans.input
             elif isinstance(item, Receipt):
                 item = item.dict()
                 hash = item['transaction_hash']
                 rcpt = Receipt()
                 rcpt.map(item)
+                if hash not in tx_d:
+                    tx_d[hash] = {}
                 tx_d[hash]['address'] = rcpt.to_address if rcpt.contract_address is None else rcpt.contract_address
             else:
                 item = item.dict()
@@ -73,17 +77,20 @@ class InputParser(Parser):
                     hash = t['transaction_hash']
                     traces.append(t['action'])
 
+                if hash not in tx_d:
+                    tx_d[hash] = {}
                 tx_d[hash]['traces'] = traces
 
         source = Queue()
         for k, v in tx_d.items():
+            print(v)
             try:
                 addr = next(
-                    t["action"]["to"].lower()
+                    t["to_address"]
                     for t in v['traces']
                     if (
-                            t["action"]["callType"].lower() == "delegatecall"
-                            and t["action"]["from"].lower() == v['address'].lower()
+                            t["call_type"].lower() == "delegatecall"
+                            and t["from_address"] == v['address']
                     )
                 )
             except StopIteration:
@@ -107,6 +114,8 @@ class InputParser(Parser):
             address = item['address']
             abi = ABI()
             abi.map(item)
+            if address not in ad_d:
+                ad_d[address] = {}
             ad_d[address]['abi'] = abi.abi
 
         in_d = {}

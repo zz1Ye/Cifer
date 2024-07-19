@@ -11,7 +11,7 @@ from queue import Queue
 
 from dao.meta import JsonDao
 from item.evm.tx import Trace
-from spider.evm.ps import SubgraphParser
+from spider.evm.ps import SubgraphParser, InputParser
 from spider.evm.tx import TransactionSpider
 from utils.conf import Vm, Net, Module
 from utils.pc import PC, Job
@@ -23,7 +23,7 @@ async def main():
     module = Module.TX
 
     out = f"out/{vm.value}/{net.value}/{module.value}"
-    parser = SubgraphParser(vm, net, module)
+    parser = InputParser(vm, net, module)
     hash = '0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8'
 
     res = await parser.parse(hashes=[hash], out=out)

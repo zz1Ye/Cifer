@@ -9,7 +9,7 @@ import ijson
 class Dao:
     def __init__(self, fpath: str):
         self.fpath = fpath
-        self._id = '{}{}'.format(
+        self._id = '{}-{}'.format(
             self.__class__.__qualname__,
             fpath
         )
