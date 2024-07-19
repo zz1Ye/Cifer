@@ -22,7 +22,7 @@ def check_source(func):
 
 class Item(BaseModel):
     def id(self):
-        return '{}_{}'.format(
+        return '{}-{}'.format(
             self.__class__.__qualname__,
             str(self.dict())
         )

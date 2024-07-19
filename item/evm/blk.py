@@ -24,7 +24,7 @@ class Block(Item):
         self.nonce = source.get('nonce')
         self.difficulty = source.get('difficulty')
         self.total_difficulty = source.get('totalDifficulty')
-        self.logs_bloom = source.get('logs_bloom')
+        self.logs_bloom = source.get('logsBloom')
         self.sha3uncles = source.get('sha3uncles')
         self.extra_data = source.get('extraData')
         self.timestamp = source.get('timestamp')
