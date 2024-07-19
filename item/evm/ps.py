@@ -29,10 +29,12 @@ class EventLog(Item):
     @snake_to_camel
     @check_source
     def map(self, source: dict):
+        self.hash = source.get('hash')
         self.event = source.get('event')
         self.args = source.get('args')
         return self
 
+    hash: str = Field(default='')
     event: str = Field(default='')
     args: dict = Field(default={})
 

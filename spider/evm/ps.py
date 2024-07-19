@@ -17,7 +17,7 @@ from web3 import Web3
 
 from dao.meta import JsonDao
 from item.evm.blk import Block
-from item.evm.ps import Timestamp, Subgraph, Input
+from item.evm.ps import Timestamp, Subgraph, Input, EventLog
 from item.evm.sc import ABI
 from item.evm.tx import Transaction, Trace, Receipt
 from spider.evm.blk import BlockSpider
@@ -35,138 +35,99 @@ class EventLogParser(Parser):
         self.w3 = Web3(Web3.HTTPProvider(
             self.provider.get()
         ))
-        self.trans_spider = TransactionSpider(vm, net, module)
-        self.abi_spider = ContractSpider(vm, net, Module.SC)
+        self.tx_spider = TransactionSpider(vm, net, module)
+        self.sc_spider = ContractSpider(vm, net, Module.SC)
 
+    @save_item
     @check_item_exists
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
-        source = Queue()
-        for h in keys:
-            for mode in ['trace', 'rcpt']:
-                source.put(
-                    Job(
-                        spider=self.trans_spider,
-                        params={'mode': mode, 'hash': h},
-                        item={'trans': Transaction(), 'trace': Trace(), 'rcpt': Receipt()}[mode],
-                        dao=JsonDao(f"{out}/tx/{h}/{mode}.json")
-                    )
-                )
+        tasks = [
+            asyncio.create_task(self.tx_spider.crawl(keys, 'trace', out)),
+            asyncio.create_task(self.tx_spider.crawl(keys, 'rcpt', out))
+        ]
+        trace_queue, rcpt_queue = await asyncio.gather(*tasks)
+        trace_dict = {e.get('key'): e.get('item') for e in trace_queue}
+        rcpt_dict = {e.get('key'): e.get('item') for e in rcpt_queue}
 
-        pc = PC(source)
-        await pc.run()
-
-        tx_d = {}
-        while pc.fi_q.qsize() != 0:
-            item = pc.fi_q.get().item
-            if isinstance(item, Receipt):
-                item = item.dict()
-                hash = item['transaction_hash']
-                rcpt = Receipt()
-                rcpt.map(item)
-                if hash not in tx_d:
-                    tx_d[hash] = {}
-                tx_d[hash]['address'] = rcpt.to_ if rcpt.contract_address is None else rcpt.contract_address
-            else:
-                item = item.dict()
-                traces = []
-                for t in item['array']:
-                    hash = t['transaction_hash']
-                    traces.append(t['action'])
-
-                if hash not in tx_d:
-                    tx_d[hash] = {}
-                tx_d[hash]['traces'] = traces
-
-        source = Queue()
-        for k, v in tx_d.items():
-            print(v['address'])
+        tmp = {}
+        for h in set(trace_dict.keys()) & set(rcpt_dict.keys()):
+            trace = trace_dict[h]['array']
+            rcpt = rcpt_dict[h]
+            address = rcpt['to_'] if rcpt['contract_address'] is None else rcpt['contract_address']
             try:
-                addr = next(
-                    t["to_"]
-                    for t in v['traces']
+                address = next(
+                    t['action']["to_"]
+                    for t in trace
                     if (
-                            t["call_type"].lower() == "delegatecall"
-                            and t["from_"] == v['address']
+                            t['action']["call_type"].lower() == "delegatecall"
+                            and t['action']["from_"] == address
                     )
                 )
             except StopIteration:
-                addr = v['address']
-            source.put(
-                Job(
-                    spider=self.abi_spider,
-                    params={'mode': 'abi', 'address': addr},
-                    item=ABI(),
-                    dao=JsonDao(f"{out}/sc/{addr}/abi.json")
-                )
-            )
+                pass
+            tmp[h] = {'address': address}
 
-        pc = PC(source)
-        await pc.run()
+        abi_queue = await self.sc_spider.crawl([v.get('address') for v in tmp.values()], 'abi', out)
+        abi_dict = {e['key']: e.get('item').get('abi') for e in abi_queue if e.get('item') is not None}
 
-        ad_d = {}
-        while pc.fi_q.qsize() != 0:
-            item = pc.fi_q.get().item
-            item = item.dict()
-            address = item['address']
-            abi = ABI()
-            abi.map(item)
-            if address not in ad_d:
-                ad_d[address] = {}
-            ad_d[address]['abi'] = abi.abi
-
-        el_d = {}
-        for k, v in tx_d.items():
-            receipt = self.w3.eth.get_transaction_receipt(HexBytes(hash))
-            event_logs = []
-            for idx, log in enumerate(receipt["logs"]):
-                addr = log["address"].lower()
-                contract = self.w3.eth.contract(
-                    self.w3.to_checksum_address(addr), abi=ad_d[v['address']]['abi']
-                )
-                receipt_event_signature_hex = self.w3.to_hex(
-                    log["topics"][0]
-                )
-
-                events = [e for e in contract.abi if e["type"] == "event"]
-                for event in events:
-                    # Get event signature components
-                    name = event["name"]
-                    param_type, param_name = [], []
-
-                    for param in event["inputs"]:
-                        if "components" not in param:
-                            param_type.append(param["type"])
-                            param_name.append(param["name"])
-                        else:
-                            param_type.append(f"({','.join([p['type'] for p in param['components']])})")
-                            param_name.append(f"({','.join([p['name'] for p in param['components']])})")
-
-                    inputs = ",".join(param_type)
-                    p_t = ",".join([e.lstrip('(').rstrip(')') for e in param_type]).split(",")
-                    p_n = ",".join([e.lstrip('(').rstrip(')') for e in param_name]).split(",")
-                    p_p = [f"{a} {b}" for a, b in zip(p_t, p_n)]
-
-                    # Hash event signature
-                    event_signature_text = f"{name}({inputs})"
-                    event_signature_hex = self.w3.to_hex(
-                        self.w3.keccak(text=event_signature_text)
+        queue = []
+        for k, v in tmp.items():
+            if v.get('address') in abi_dict:
+                receipt = self.w3.eth.get_transaction_receipt(HexBytes(k))
+                event_logs = []
+                for idx, log in enumerate(receipt["logs"]):
+                    addr = log["address"].lower()
+                    contract = self.w3.eth.contract(
+                        self.w3.to_checksum_address(addr), abi=abi_dict[v['address']]
+                    )
+                    receipt_event_signature_hex = self.w3.to_hex(
+                        log["topics"][0]
                     )
 
-                    # Find match between log's event signature and ABI's event signature
-                    if event_signature_hex == receipt_event_signature_hex:
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore")
-                            decoded_log = dict(contract.events[event["name"]]().process_receipt(receipt)[0])
-                            event_logs.append(
-                                {
-                                    'event': f"{name}({','.join(p_p)})",
-                                    'args': parse_hexbytes_dict(dict(decoded_log['args']))
-                                }
-                            )
-                            break
-            el_d[k] = event_logs
-        return el_d
+                    events = [e for e in contract.abi if e["type"] == "event"]
+                    for event in events:
+                        # Get event signature components
+                        name = event["name"]
+                        param_type, param_name = [], []
+
+                        for param in event["inputs"]:
+                            if "components" not in param:
+                                param_type.append(param["type"])
+                                param_name.append(param["name"])
+                            else:
+                                param_type.append(f"({','.join([p['type'] for p in param['components']])})")
+                                param_name.append(f"({','.join([p['name'] for p in param['components']])})")
+
+                        inputs = ",".join(param_type)
+                        p_t = ",".join([e.lstrip('(').rstrip(')') for e in param_type]).split(",")
+                        p_n = ",".join([e.lstrip('(').rstrip(')') for e in param_name]).split(",")
+                        p_p = [f"{a} {b}" for a, b in zip(p_t, p_n)]
+
+                        # Hash event signature
+                        event_signature_text = f"{name}({inputs})"
+                        event_signature_hex = self.w3.to_hex(
+                            self.w3.keccak(text=event_signature_text)
+                        )
+
+                        # Find match between log's event signature and ABI's event signature
+                        if event_signature_hex == receipt_event_signature_hex:
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("ignore")
+                                decoded_log = dict(contract.events[event["name"]]().process_receipt(receipt)[0])
+                                event_logs.append(
+                                    EventLog().map({
+                                        'hash': k,
+                                        'event': f"{name}({','.join(p_p)})",
+                                        'args': parse_hexbytes_dict(dict(decoded_log['args']))
+                                    }).dict()
+                                )
+                                break
+                queue.append({
+                    'key': k,
+                    'item': {'event_logs': event_logs}
+                })
+        return queue
 
 
 class InputParser(Parser):
