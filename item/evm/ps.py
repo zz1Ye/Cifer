@@ -15,10 +15,12 @@ class Input(Item):
     @snake_to_camel
     @check_source
     def map(self, source: dict):
+        self.hash = source.get('hash')
         self.func = source.get('func')
         self.args = source.get('args')
         return self
 
+    hash: str = Field(default='')
     func: str = Field(default='')
     args: dict = Field(default={})
 
