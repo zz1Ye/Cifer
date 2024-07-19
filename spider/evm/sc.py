@@ -28,7 +28,7 @@ class ContractSpider(Spider):
 
     async def get(self, **kwargs):
         mode = kwargs.get('mode')
-        address = kwargs.get('address')
+        address = kwargs.get('key')
 
         if mode not in ["abi"]:
             raise ValueError()
@@ -63,15 +63,20 @@ class ContractSpider(Spider):
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode, 'address': address},
+                    params={'mode': mode, 'key': address},
                     item={'abi': ABI()}[mode],
                     dao=JsonDao(f"{out}/{address}/{mode}.json")
                 )
             )
         pc = PC(source)
         await pc.run()
-        queue = [{'key': job.id.split('-')[1], 'item': job.item.dict()} for job in list(pc.fi_q)]
-        queue += [{'key': job.id.split('-')[1], 'item': None} for job in list(pc.fa_q)]
+        queue = []
+        while pc.fi_q.qsize() != 0:
+            job = pc.fi_q.get()
+            queue.append({'key': job.id.split('-')[1], 'item': job.item.dict()})
+        while pc.fa_q.qsize() != 0:
+            job = pc.fa_q.get()
+            queue.append({'key': job.id.split('-')[1], 'item': None})
 
         return queue
 

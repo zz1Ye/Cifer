@@ -26,7 +26,7 @@ class TransactionSpider(Spider):
 
     async def get(self, **kwargs):
         mode = kwargs.get('mode')
-        hash = kwargs.get('hash')
+        hash = kwargs.get('key')
 
         if mode not in ["trans", "trace", "rcpt"]:
             raise ValueError()
@@ -57,7 +57,7 @@ class TransactionSpider(Spider):
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode, 'hash': hash},
+                    params={'mode': mode, 'key': hash},
                     item={
                         'trans': Transaction(),
                         'trace': Trace(), 'rcpt': Receipt()
@@ -67,8 +67,14 @@ class TransactionSpider(Spider):
             )
         pc = PC(source)
         await pc.run()
-        queue = [{'key': job.id.split('-')[1], 'item': job.item.dict()} for job in list(pc.fi_q)]
-        queue += [{'key': job.id.split('-')[1], 'item': None} for job in list(pc.fa_q)]
+        queue = []
+        while pc.fi_q.qsize() != 0:
+            job = pc.fi_q.get()
+            print(job.id.split('-'))
+            queue.append({'key': job.id.split('-')[1], 'item': job.item.dict()})
+        while pc.fa_q.qsize() != 0:
+            job = pc.fa_q.get()
+            queue.append({'key': job.id.split('-')[1], 'item': None})
 
         return queue
 

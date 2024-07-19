@@ -23,10 +23,10 @@ async def main():
     module = Module.TX
 
     out = f"out/{vm.value}/{net.value}"
-    parser = EventLogParser(vm, net, module)
+    parser = InputParser(vm, net, module)
     hash = '0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8'
 
-    res = await parser.parse(hashes=[hash], out=out)
+    res = await parser.parse(keys=[hash], mode='in', out=out)
     print(res)
 
 

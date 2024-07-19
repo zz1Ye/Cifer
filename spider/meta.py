@@ -41,8 +41,8 @@ def check_item_exists(func):
 
 def save_item(func):
     @wraps(func)
-    def wrapper(self, keys: List[str], mode: str, out: str):
-        queue = func(self, keys, mode, out)
+    async def wrapper(self, keys: List[str], mode: str, out: str):
+        queue = await func(self, keys, mode, out)
 
         for e in queue:
             key, item = e.get("key"), e.get("item")

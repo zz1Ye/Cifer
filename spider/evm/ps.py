@@ -196,7 +196,7 @@ class InputParser(Parser):
         for h in set(trans_dict.keys()) & set(trace_dict.keys()) & set(rcpt_dict.keys()):
             trace = trace_dict[h]['array']
             rcpt = rcpt_dict[h]
-            address = rcpt.to_ if rcpt.contract_address is None else rcpt.contract_address
+            address = rcpt['to_'] if rcpt['contract_address'] is None else rcpt['contract_address']
             try:
                 address = next(
                     t['action']["to_"]
@@ -253,7 +253,7 @@ class InputParser(Parser):
                         'hash': k,
                         'func': input["func"],
                         'args': input["args"]
-                    })
+                    }).dict()
                 })
         return queue
 
@@ -295,7 +295,7 @@ class SubgraphParser(Parser):
             queue.append({'key': k, 'item': Subgraph().map({
                 'hash': k,
                 'paths': v
-            })})
+            }).dict()})
 
         return queue
 

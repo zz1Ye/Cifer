@@ -25,7 +25,7 @@ class BlockSpider(Spider):
 
     async def get(self, **kwargs):
         mode = kwargs.get('mode')
-        hash = kwargs.get('hash')
+        hash = kwargs.get('key')
 
         if mode not in ["block"]:
             raise ValueError()
@@ -54,7 +54,7 @@ class BlockSpider(Spider):
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode, 'hash': hash},
+                    params={'mode': mode, 'key': hash},
                     item={'abi': Block()}[mode],
                     dao=JsonDao(f"{out}/{hash}/{mode}.json")
                 )
