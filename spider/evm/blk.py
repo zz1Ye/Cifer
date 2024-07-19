@@ -12,7 +12,7 @@ from typing import List
 from dao.meta import JsonDao
 from item.evm.blk import Block
 from settings import RPC_LIST, HEADER
-from spider.meta import Spider, check_item_exists, preprocess_keys
+from spider.meta import Spider, check_item_exists, preprocess_keys, save_item
 from utils.conf import Vm, Net, Module
 from utils.pc import Job, PC
 from utils.req import Request, Headers
@@ -45,6 +45,7 @@ class BlockSpider(Spider):
         )
         return {'res': await self.fetch(req), 'task': f'blk.{mode}'}
 
+    @save_item
     @check_item_exists
     @preprocess_keys
     async def crawl(self, keys: List[str], mode: str, out: str):
@@ -60,5 +61,8 @@ class BlockSpider(Spider):
             )
         pc = PC(source)
         await pc.run()
-        return list(pc.fi_q), list(pc.fa_q)
+        queue = [{'key': job.id.split('-')[1], 'item': job.item.dict()} for job in list(pc.fi_q)]
+        queue += [{'key': job.id.split('-')[1], 'item': None} for job in list(pc.fa_q)]
+
+        return queue
 

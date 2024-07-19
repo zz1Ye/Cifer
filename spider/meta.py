@@ -39,6 +39,22 @@ def check_item_exists(func):
     return wrapper
 
 
+def save_item(func):
+    @wraps(func)
+    def wrapper(self, keys: List[str], mode: str, out: str):
+        queue = func(self, keys, mode, out)
+
+        for e in queue:
+            key, item = e.get("key"), e.get("item")
+            if item is not None:
+                dao = JsonDao(f'{out}/{key}/{mode}.json')
+                dao.create()
+                dao.insert(item)
+        return queue
+
+    return wrapper
+
+
 class Spider:
     def __init__(self, vm: Vm, net: Net, module: Module):
         self.vm = vm.value

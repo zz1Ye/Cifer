@@ -6,7 +6,9 @@
 @Author : zzYe
 
 """
+import asyncio
 import warnings
+from collections import defaultdict
 from queue import Queue
 from typing import List
 
@@ -15,13 +17,13 @@ from web3 import Web3
 
 from dao.meta import JsonDao
 from item.evm.blk import Block
-from item.evm.ps import Timestamp
+from item.evm.ps import Timestamp, Subgraph
 from item.evm.sc import ABI
 from item.evm.tx import Transaction, Trace, Receipt
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
-from spider.meta import Parser, check_item_exists, preprocess_keys
+from spider.meta import Parser, check_item_exists, preprocess_keys, save_item
 from utils.conf import Vm, Net, Module
 from utils.pc import Job, PC
 from utils.web3 import parse_hexbytes_dict
@@ -304,57 +306,41 @@ class SubgraphParser(Parser):
         super().__init__(vm, net, module)
         self.spider = TransactionSpider(vm, net, module)
 
+    @save_item
     @check_item_exists
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
-        trans_fi, trans_fa = await self.spider.crawl(keys, 'trans', out)
-        trans_fi = [{
-            'hash': job.item.hash,
-            'from': job.item.from_,
-            'to': job.item.to_
-        } for job in trans_fi]
-
-        trans_fa = [
-            job.id.split("-")[1]
-            for job in trans_fa
+        tasks = [
+            asyncio.create_task(self.spider.crawl(keys, 'trans', out)),
+            asyncio.create_task(self.spider.crawl(keys, 'trace', out))
         ]
+        trans_queue, trace_queue = await asyncio.gather(*tasks)
 
-        source = Queue()
-        for h in keys:
-            for mode in ['trans', 'trace']:
-                source.put(
-                    Job(
-                        spider=self.spider,
-                        params={'mode': mode, 'hash': h},
-                        item={'trans': Transaction(), 'trace': Trace()}[mode],
-                        dao=JsonDao(f"{out}/{h}/{mode}.json")
-                    )
-                )
+        res = defaultdict(list)
+        for e in trans_queue:
+            res[e.get('key')].append({
+                'from': e.get('item').get('from_'),
+                'to': e.get('item').get('to_'),
+            })
 
-        pc = PC(source)
-        await pc.run()
+        for e in trace_queue:
+            item = e.get('item')
+            res[e.get('key')] += [
+                {
+                    'from': t.get('action').get('from_'),
+                    'to': t.get('action').get('to_'),
+                }
+                for t in item['array']
+            ]
 
-        sg_d = {}
-        while pc.fi_q.qsize() != 0:
-            item = pc.fi_q.get().item
-            print(item)
+        queue = []
+        for k, v in res.items():
+            queue.append({'key': k, 'item': Subgraph().map({
+                'hash': k,
+                'paths': v
+            })})
 
-            if isinstance(item, Transaction):
-                item = item.dict()
-                hash = item['hash']
-                if hash not in sg_d:
-                    sg_d[hash] = []
-                sg_d[hash].append({'from': item['from_address'], 'to': item['to_address']})
-            else:
-                item = item.dict()
-                for e in item['array']:
-                    hash = e['transaction_hash']
-                    action = e['action']
-                    if hash not in sg_d:
-                        sg_d[hash] = []
-                    sg_d[hash].append({'from': action['from_address'], 'to': action['to_address']})
-
-        return sg_d
+        return queue
 
 
 class TimestampParser(Parser):
@@ -362,24 +348,20 @@ class TimestampParser(Parser):
         super().__init__(vm, net, module)
         self.spider = BlockSpider(vm, net, module)
 
+    @save_item
     @check_item_exists
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
-        fi, fa = await self.spider.crawl(keys, 'block', out)
+        queue = await self.spider.crawl(keys, 'block', out)
 
-        n_fi = [
-            Timestamp().map({
-                'hash': job.item.hash,
-                'timestamp': job.item.timestamp,
-                'blockNumber': job.item.block_number
-            })
-            for job in fi
-        ]
-
-        n_fa = [
-            job.id.split("-")[1]
-            for job in fa
-        ]
-        return n_fi, n_fa
+        for i in range(len(queue)):
+            item = queue[i].get("item")
+            if item is not None:
+                queue[i]['item'] = Timestamp().map({
+                    'hash': item['hash'],
+                    'timestamp': item['timestamp'],
+                    'blockNumber': item['block_number']
+                }).dict()
+        return queue
 
 

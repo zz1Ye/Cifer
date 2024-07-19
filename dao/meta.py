@@ -21,6 +21,15 @@ class Dao:
     def exist(self) -> bool:
         return os.path.isfile(self.fpath)
 
+    def delete(self) -> bool:
+        try:
+            if os.path.exists(self.fpath):
+                os.remove(self.fpath)
+        except (PermissionError, OSError) as e:
+            print(f"Error: {e}")
+            return False
+        return True
+
     def create(self) -> bool:
         raise NotImplementedError()
 

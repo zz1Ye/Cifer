@@ -15,7 +15,7 @@ import aiohttp
 from dao.meta import JsonDao
 from item.evm.sc import ABI
 from settings import RPC_LIST, HEADER
-from spider.meta import Spider, check_item_exists, preprocess_keys
+from spider.meta import Spider, check_item_exists, preprocess_keys, save_item
 from utils.conf import Net, Vm, Module
 from utils.pc import Job, PC
 from utils.req import Request, Headers, Url
@@ -54,6 +54,7 @@ class ContractSpider(Spider):
 
         return {'res': None, 'task': f'sc.{mode}'}
 
+    @save_item
     @check_item_exists
     @preprocess_keys
     async def crawl(self, keys: List[str], mode: str, out: str):
@@ -69,7 +70,10 @@ class ContractSpider(Spider):
             )
         pc = PC(source)
         await pc.run()
-        return list(pc.fi_q), list(pc.fa_q)
+        queue = [{'key': job.id.split('-')[1], 'item': job.item.dict()} for job in list(pc.fi_q)]
+        queue += [{'key': job.id.split('-')[1], 'item': None} for job in list(pc.fa_q)]
+
+        return queue
 
 
 async def main():

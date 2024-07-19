@@ -60,8 +60,6 @@ class Job:
             source = res.get('res')
             if source is not None:
                 self.item.map(source)
-                self.dao.create()
-                self.dao.insert(self.item.dict())
                 self._status = Status.FINISHED
                 return self.item
             else:
