@@ -12,7 +12,7 @@ from typing import List
 from dao.meta import JsonDao
 from item.evm.blk import Block
 from settings import RPC_LIST, HEADER
-from spider.meta import Spider, check_item_exists
+from spider.meta import Spider, check_item_exists, preprocess_keys
 from utils.conf import Vm, Net, Module
 from utils.pc import Job, PC
 from utils.req import Request, Headers
@@ -46,6 +46,7 @@ class BlockSpider(Spider):
         return {'res': await self.fetch(req), 'task': f'blk.{mode}'}
 
     @check_item_exists
+    @preprocess_keys
     async def crawl(self, keys: List[str], mode: str, out: str):
         source = Queue()
         for hash in keys:

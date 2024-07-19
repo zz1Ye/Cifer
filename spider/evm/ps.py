@@ -21,7 +21,7 @@ from item.evm.tx import Transaction, Trace, Receipt
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
-from spider.meta import Parser, check_item_exists
+from spider.meta import Parser, check_item_exists, preprocess_keys
 from utils.conf import Vm, Net, Module
 from utils.pc import Job, PC
 from utils.web3 import parse_hexbytes_dict
@@ -37,6 +37,7 @@ class EventLogParser(Parser):
         self.abi_spider = ContractSpider(vm, net, Module.SC)
 
     @check_item_exists
+    @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         source = Queue()
         for h in keys:
@@ -176,6 +177,7 @@ class InputParser(Parser):
         self.abi_spider = ContractSpider(vm, net, Module.SC)
 
     @check_item_exists
+    @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         source = Queue()
         for h in keys:
@@ -303,7 +305,20 @@ class SubgraphParser(Parser):
         self.spider = TransactionSpider(vm, net, module)
 
     @check_item_exists
+    @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
+        trans_fi, trans_fa = await self.spider.crawl(keys, 'trans', out)
+        trans_fi = [{
+            'hash': job.item.hash,
+            'from': job.item.from_,
+            'to': job.item.to_
+        } for job in trans_fi]
+
+        trans_fa = [
+            job.id.split("-")[1]
+            for job in trans_fa
+        ]
+
         source = Queue()
         for h in keys:
             for mode in ['trans', 'trace']:
@@ -348,20 +363,22 @@ class TimestampParser(Parser):
         self.spider = BlockSpider(vm, net, module)
 
     @check_item_exists
+    @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         fi, fa = await self.spider.crawl(keys, 'block', out)
 
         n_fi = [
             Timestamp().map({
-                'hash': e.hash,
-                'timestamp': e.timestamp,
-                'blockNumber': e.block_number
+                'hash': job.item.hash,
+                'timestamp': job.item.timestamp,
+                'blockNumber': job.item.block_number
             })
-            for e in fi
+            for job in fi
         ]
 
         n_fa = [
-
+            job.id.split("-")[1]
+            for job in fa
         ]
         return n_fi, n_fa
 

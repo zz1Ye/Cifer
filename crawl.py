@@ -32,6 +32,14 @@ async def main():
 
 asyncio.get_event_loop().run_until_complete(main())
 
+
+# async def run(self):
+#         self._status = Status.RUNNING
+#         todo_tasks = []
+#         for t in self.tasks:
+#             todo_tasks.append(asyncio.create_task(t.run()))
+#         await asyncio.gather(*todo_tasks)
+#         self._status = Status.FINISHED
     # loop = asyncio.get_event_loop()
     # with PC() as pc:
     #     q = Queue()
