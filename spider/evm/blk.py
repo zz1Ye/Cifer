@@ -6,9 +6,15 @@
 @Author : zzYe
 
 """
+from queue import Queue
+from typing import List
+
+from dao.meta import JsonDao
+from item.evm.blk import Block
 from settings import RPC_LIST, HEADER
-from spider.meta import Spider
+from spider.meta import Spider, check_item_exists
 from utils.conf import Vm, Net, Module
+from utils.pc import Job, PC
 from utils.req import Request, Headers
 
 
@@ -38,3 +44,19 @@ class BlockSpider(Spider):
             payload=payload
         )
         return {'res': await self.fetch(req), 'task': f'blk.{mode}'}
+
+    @check_item_exists
+    async def crawl(self, keys: List[str], mode: str, out: str):
+        source = Queue()
+        for hash in keys:
+            source.put(
+                Job(
+                    spider=self,
+                    params={'mode': mode, 'hash': hash},
+                    item={'abi': Block()}[mode],
+                    dao=JsonDao(f"{out}/{hash}/{mode}.json")
+                )
+            )
+        pc = PC(source)
+        await pc.run()
+

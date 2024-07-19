@@ -20,6 +20,11 @@ class Net(Enum):
 
 
 class Module(Enum):
+    TX = "tx"
+    BLK = "blk"
+    SC = "sc"
+    PS = 'ps'
+
     TRANS = "tx.transaction"
     TRACE = "tx.trace"
     RCPT = "tx.receipt"
@@ -31,8 +36,5 @@ class Module(Enum):
     IN = "ps.input"
     EL = "ps.eventlog"
 
-    TX = "tx"
-    BLK = "blk"
-    SC = "sc"
 
 

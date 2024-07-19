@@ -7,10 +7,15 @@
 
 """
 import asyncio
+from queue import Queue
+from typing import List
 
+from dao.meta import JsonDao
+from item.evm.tx import Transaction, Trace, Receipt
 from settings import RPC_LIST, HEADER
-from spider.meta import Spider
+from spider.meta import Spider, check_item_exists
 from utils.conf import Net, Vm, Module
+from utils.pc import Job, PC
 from utils.req import Request, Headers
 
 
@@ -42,6 +47,24 @@ class TransactionSpider(Spider):
         if mode == 'trace':
             return {'res': res if res is None else {'array': res}, 'task': f'tx.{mode}'}
         return {'res': res, 'task': f'tx.{mode}'}
+
+    @check_item_exists
+    async def crawl(self, keys: List[str], mode: str, out: str):
+        source = Queue()
+        for hash in keys:
+            source.put(
+                Job(
+                    spider=self,
+                    params={'mode': mode, 'hash': hash},
+                    item={
+                        'trans': Transaction(),
+                        'trace': Trace(), 'rcpt': Receipt()
+                    }[mode],
+                    dao=JsonDao(f"{out}/{hash}/{mode}.json")
+                )
+            )
+        pc = PC(source)
+        await pc.run()
 
 
 async def main():

@@ -21,7 +21,7 @@ from item.evm.tx import Transaction, Trace, Receipt
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
-from spider.meta import Parser
+from spider.meta import Parser, check_item_exists
 from utils.conf import Vm, Net, Module
 from utils.pc import Job, PC
 from utils.web3 import parse_hexbytes_dict
@@ -36,9 +36,10 @@ class EventLogParser(Parser):
         self.trans_spider = TransactionSpider(vm, net, module)
         self.abi_spider = ContractSpider(vm, net, Module.SC)
 
-    async def parse(self, hashes: List[str], out: str):
+    @check_item_exists
+    async def parse(self, keys: List[str], mode: str, out: str):
         source = Queue()
-        for h in hashes:
+        for h in keys:
             for mode in ['trace', 'rcpt']:
                 source.put(
                     Job(
@@ -174,9 +175,10 @@ class InputParser(Parser):
         self.trans_spider = TransactionSpider(vm, net, module)
         self.abi_spider = ContractSpider(vm, net, Module.SC)
 
-    async def parse(self, hashes: List[str], out: str):
+    @check_item_exists
+    async def parse(self, keys: List[str], mode: str, out: str):
         source = Queue()
-        for h in hashes:
+        for h in keys:
             for mode in ['trans', 'trace', 'rcpt']:
                 source.put(
                     Job(
@@ -300,9 +302,10 @@ class SubgraphParser(Parser):
         super().__init__(vm, net, module)
         self.spider = TransactionSpider(vm, net, module)
 
-    async def parse(self, hashes: List[str], out: str):
+    @check_item_exists
+    async def parse(self, keys: List[str], mode: str, out: str):
         source = Queue()
-        for h in hashes:
+        for h in keys:
             for mode in ['trans', 'trace']:
                 source.put(
                     Job(
@@ -344,10 +347,11 @@ class TimestampParser(Parser):
         super().__init__(vm, net, module)
         self.spider = BlockSpider(vm, net, module)
 
-    async def parse(self, hashes: List[str], out: str):
+    @check_item_exists
+    async def parse(self, keys: List[str], mode: str, out: str):
         source = Queue()
         mode = "block"
-        for h in hashes:
+        for h in keys:
             dao = JsonDao(f"{out}/{h}/{mode}.json")
             source.put(
                 Job(

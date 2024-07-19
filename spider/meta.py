@@ -7,12 +7,28 @@
 
 """
 import json
+from functools import wraps
+from typing import List
+
 import aiohttp
 from aiohttp_retry import RetryClient, RandomRetry
 
+from dao.meta import JsonDao
 from settings import URL_DICT
 from utils.conf import Net, Vm, Module
 from utils.req import RPCNode
+
+
+def check_item_exists(func):
+    @wraps(func)
+    def wrapper(self, keys: List[str], mode: str, out: str):
+        keys = [k.lower() for k in keys]
+        n_keys = [
+            k for k in keys
+            if not JsonDao(f'{out}/{k}/{mode}.json').exist()
+        ]
+        return func(self, n_keys, mode, out)
+    return wrapper
 
 
 class Spider:
@@ -38,6 +54,9 @@ class Spider:
         return self._id
 
     def get(self, **kwargs):
+        raise NotImplementedError()
+
+    async def crawl(self, keys: List[str], mode: str, out: str):
         raise NotImplementedError()
 
     @staticmethod
@@ -88,4 +107,7 @@ class Parser:
     @property
     def id(self):
         return self._id
+
+    async def parse(self, keys: List[str], mode: str, out: str):
+        raise NotImplementedError()
 

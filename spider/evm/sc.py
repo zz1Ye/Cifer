@@ -7,12 +7,17 @@
 
 """
 import asyncio
+from queue import Queue
+from typing import List
 
 import aiohttp
 
+from dao.meta import JsonDao
+from item.evm.sc import ABI
 from settings import RPC_LIST, HEADER
-from spider.meta import Spider
+from spider.meta import Spider, check_item_exists
 from utils.conf import Net, Vm, Module
+from utils.pc import Job, PC
 from utils.req import Request, Headers, Url
 
 
@@ -48,6 +53,21 @@ class ContractSpider(Spider):
             return {'res': {'address': address, 'abi': res}, 'task': f'sc.{mode}'}
 
         return {'res': None, 'task': f'sc.{mode}'}
+
+    @check_item_exists
+    async def crawl(self, keys: List[str], mode: str, out: str):
+        source = Queue()
+        for address in keys:
+            source.put(
+                Job(
+                    spider=self,
+                    params={'mode': mode, 'address': address},
+                    item={'abi': ABI()}[mode],
+                    dao=JsonDao(f"{out}/{address}/{mode}.json")
+                )
+            )
+        pc = PC(source)
+        await pc.run()
 
 
 async def main():
