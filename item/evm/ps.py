@@ -8,10 +8,11 @@
 """
 from pydantic import Field
 
-from item.meta import Item, check_source
+from item.meta import Item, check_source, snake_to_camel
 
 
 class Input(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.func = source.get('func')
@@ -22,6 +23,7 @@ class Input(Item):
 
 
 class EventLog(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.event = source.get('event')
@@ -32,6 +34,7 @@ class EventLog(Item):
 
 
 class Timestamp(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.hash = source.get('hash')
@@ -44,6 +47,7 @@ class Timestamp(Item):
 
 
 class Subgraph(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.hash = source.get('hash')

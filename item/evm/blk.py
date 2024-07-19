@@ -8,7 +8,7 @@
 """
 from pydantic import Field
 
-from item.meta import Item, check_source
+from item.meta import Item, check_source, snake_to_camel
 
 
 class Block(Item):
@@ -16,6 +16,7 @@ class Block(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/eth_getBlockByHash
     """
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.number = source.get('number')

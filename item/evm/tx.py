@@ -10,7 +10,7 @@ from typing import List
 
 from pydantic import Field
 
-from item.meta import Item, check_source
+from item.meta import Item, check_source, snake_to_camel
 
 
 class Transaction(Item):
@@ -18,6 +18,7 @@ class Transaction(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionByHash
     """
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.hash = source.get('hash')
@@ -62,6 +63,7 @@ class Transaction(Item):
 
 
 class TraceAction(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.from_ = source.get('from')
@@ -84,6 +86,7 @@ class TraceAction(Item):
 
 
 class TraceResult(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.gas_used = source.get('gasUsed')
@@ -94,6 +97,7 @@ class TraceResult(Item):
 
 
 class TraceElement(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         action = TraceAction()
@@ -127,6 +131,7 @@ class Trace(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/trace_transaction
     """
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         array = []
@@ -140,6 +145,7 @@ class Trace(Item):
 
 
 class ReceiptLog(Item):
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         self.address = source.get('address')
@@ -169,6 +175,7 @@ class Receipt(Item):
         https://www.chainnodes.org/docs/ethereum/eth_getTransactionReceipt
 
     """
+    @snake_to_camel
     @check_source
     def map(self, source: dict):
         logs = []
