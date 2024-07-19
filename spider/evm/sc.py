@@ -68,6 +68,7 @@ class ContractSpider(Spider):
             )
         pc = PC(source)
         await pc.run()
+        return list(pc.fi_q), list(pc.fa_q)
 
 
 async def main():

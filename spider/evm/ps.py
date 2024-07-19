@@ -349,28 +349,20 @@ class TimestampParser(Parser):
 
     @check_item_exists
     async def parse(self, keys: List[str], mode: str, out: str):
-        source = Queue()
-        mode = "block"
-        for h in keys:
-            dao = JsonDao(f"{out}/{h}/{mode}.json")
-            source.put(
-                Job(
-                    spider=self.spider,
-                    params={'mode': mode, 'hash': h},
-                    item=Block(),
-                    dao=dao
-                )
-            )
+        fi, fa = await self.spider.crawl(keys, 'block', out)
 
-        pc = PC(source)
-        await pc.run()
+        n_fi = [
+            Timestamp().map({
+                'hash': e.hash,
+                'timestamp': e.timestamp,
+                'blockNumber': e.block_number
+            })
+            for e in fi
+        ]
 
-        ts_d = {}
-        while pc.fi_q.qsize() != 0:
-            item = pc.fi_q.get()
-            hash = item['hash']
+        n_fa = [
 
-            ts_d[hash] = Timestamp().map(item)
-        return ts_d
+        ]
+        return n_fi, n_fa
 
 

@@ -65,37 +65,7 @@ class TransactionSpider(Spider):
             )
         pc = PC(source)
         await pc.run()
-
-        res = {'fi': [], 'fa': []}
-        while pc.fi_q.qsize() != 0:
-            item = pc.fi_q.get().item
-            if isinstance(item, Receipt):
-                item = item.dict()
-                hash = item['transaction_hash']
-                rcpt = Receipt()
-                rcpt.map(item)
-                if hash not in tx_d:
-                    tx_d[hash] = {}
-                tx_d[hash]['address'] = rcpt.to_ if rcpt.contract_address is None else rcpt.contract_address
-            else:
-                item = item.dict()
-                traces = []
-                for t in item['array']:
-                    hash = t['transaction_hash']
-                    traces.append(t['action'])
-
-                if hash not in tx_d:
-                    tx_d[hash] = {}
-                tx_d[hash]['traces'] = traces
-
-
-            address = item['address']
-            abi = ABI()
-            abi.map(item)
-            if address not in ad_d:
-                ad_d[address] = {}
-            ad_d[address]['abi'] = abi.abi
-        return pc.fi_q, pc.fa_q
+        return list(pc.fi_q), list(pc.fa_q)
 
 
 async def main():
