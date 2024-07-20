@@ -8,11 +8,13 @@
 """
 import asyncio
 from queue import Queue
+from typing import List
 
 from dao.meta import JsonDao
 from item.evm.tx import Trace
-from spider.evm.ps import SubgraphParser, InputParser, EventLogParser
+from spider.evm.ps import SubgraphParser, InputParser, EventLogParser, TimestampParser, CompleteFormParser
 from spider.evm.tx import TransactionSpider
+from spider.meta import Parser
 from utils.conf import Vm, Net, Module, Mode
 from utils.pc import PC, Job
 
@@ -23,10 +25,10 @@ async def main():
     module = Module.PS
 
     out = f"out"
-    parser = EventLogParser(vm, net, module)
+    parser = CompleteFormParser(vm, net, module)
     hash = '0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8'
 
-    res = await parser.parse(keys=[hash], mode=Mode.EL, out=out)
+    res = await parser.parse(keys=[hash], mode=Mode.CF, out=out)
     print(res)
 
 

@@ -30,7 +30,7 @@ class Module(Enum):
             Module.TX: {Mode.TRANS, Mode.TRACE, Mode.RCPT},
             Module.BLK: {Mode.BLOCK},
             Module.SC: {Mode.ABI},
-            Module.PS: {Mode.TS, Mode.SG, Mode.IN, Mode.EL}
+            Module.PS: {Mode.TS, Mode.SG, Mode.IN, Mode.EL, Mode.CF}
         }.get(self)
 
 
@@ -39,6 +39,7 @@ class Mode(Enum):
     SG = 'sg'
     IN = 'in'
     EL = 'el'
+    CF = 'cf'
     TRANS = 'trans'
     TRACE = 'trace'
     RCPT = 'rcpt'

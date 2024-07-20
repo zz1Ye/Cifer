@@ -29,12 +29,12 @@ class BlockSpider(Spider):
         if mode not in [Mode.BLOCK]:
             raise ValueError()
 
-        payload = self.rpc.get(mode).get("payload")
+        payload = self.rpc.get(mode.value).get("payload")
         payload["params"] = [hash, True]
 
         req = Request(
             url=self.provider.get(),
-            method=self.rpc.get(mode).get("method"),
+            method=self.rpc.get(mode.value).get("method"),
             headers=Headers(
                 accept=HEADER.get("accept"),
                 content_type=HEADER.get("content-type"),
@@ -53,15 +53,20 @@ class BlockSpider(Spider):
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode.value, 'key': hash},
+                    params={'mode': mode, 'key': hash},
                     item={Mode.BLOCK: Block()}[mode],
                     dao=JsonDao(self.dir_path(out, hash, mode))
                 )
             )
         pc = PC(source)
         await pc.run()
-        queue = [{'key': job.id.split('-')[1], 'item': job.item.dict()} for job in list(pc.fi_q)]
-        queue += [{'key': job.id.split('-')[1], 'item': None} for job in list(pc.fa_q)]
+        queue = []
+        while pc.fi_q.qsize() != 0:
+            job = pc.fi_q.get()
+            queue.append({'key': job.id.split('-')[1], 'item': job.item.dict()})
+        while pc.fa_q.qsize() != 0:
+            job = pc.fa_q.get()
+            queue.append({'key': job.id.split('-')[1], 'item': None})
 
         return queue
 

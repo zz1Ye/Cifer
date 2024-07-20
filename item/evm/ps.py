@@ -59,9 +59,10 @@ class Subgraph(Item):
     def map(self, source: dict):
         self.hash = source.get('hash')
 
-        nodes, edges = set(), set()
+        nodes, edges = set(), []
         for p in source.get('paths'):
-            edges.add(p)
+            if not (p.get('from') in nodes and p.get('to') in nodes):
+                edges.append(p)
             nodes.add(p.get('from'))
             nodes.add(p.get('to'))
 

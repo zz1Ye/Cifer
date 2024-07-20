@@ -41,6 +41,38 @@ def get_impl_address(trace: dict, rcpt: dict):
     return address
 
 
+class CompleteFormParser(Parser):
+    def __init__(self, vm: Vm, net: Net, module: Module):
+        super().__init__(vm, net, module)
+        self.el_parser = EventLogParser(vm, net, module)
+        self.in_parser = InputParser(vm, net, module)
+        self.sg_parser = SubgraphParser(vm, net, module)
+        self.ts_parser = TimestampParser(vm, net, module)
+
+    @save_item
+    @load_exists_item
+    @preprocess_keys
+    async def parse(self, keys: List[str], mode: Mode, out: str):
+        tasks = [
+            asyncio.create_task(self.el_parser.parse(keys, Mode.EL, out)),
+            asyncio.create_task(self.in_parser.parse(keys, Mode.IN, out)),
+            asyncio.create_task(self.sg_parser.parse(keys, Mode.SG, out)),
+            asyncio.create_task(self.ts_parser.parse(keys, Mode.TS, out)),
+        ]
+        el_q, in_q, sg_q, ts_q = await asyncio.gather(*tasks)
+
+        queue = []
+        for i in range(len(keys)):
+            queue.append({
+                'hash': keys[i],
+                'timestamp': ts_q[i].get('item'),
+                'subgraph': sg_q[i].get('item'),
+                'input': in_q[i].get('item'),
+                'event_logs': el_q[i].get('item')
+            })
+        return queue
+
+
 class EventLogParser(Parser):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)

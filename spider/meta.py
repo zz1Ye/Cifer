@@ -35,7 +35,7 @@ def load_exists_item(func):
 
         for e in await func(self, list(n_keys), mode, out):
             key, item = e.get("key"), e.get("item")
-            item_dict[k] = {'key': key, 'item': item}
+            item_dict[key] = {'key': key, 'item': item}
 
         queue = [item_dict[k] for k in keys]
         return queue
