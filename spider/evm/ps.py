@@ -240,13 +240,18 @@ class InputParser(Parser):
                             self.w3.to_checksum_address(address),
                             abi=abi_dict[address]
                         )
-                        function = contract.get_function_by_selector(function_signature)
 
-                        function_abi_entry = next(
-                            (
-                                abi for abi in contract.abi if
-                                abi['type'] == 'function' and abi.get('name') == function.function_identifier
-                            ), None)
+                        try:
+                            function = contract.get_function_by_selector(function_signature)
+
+                            function_abi_entry = next(
+                                (
+                                    abi for abi in contract.abi if
+                                    abi['type'] == 'function' and abi.get('name') == function.function_identifier
+                                ), None)
+                        except:
+                            queue.append({'key': k, 'item': None})
+                            continue
 
                         if function_abi_entry:
                             decoded_input = contract.decode_function_input(item['input'])
