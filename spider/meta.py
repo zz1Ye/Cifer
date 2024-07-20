@@ -14,7 +14,7 @@ from utils.req import RPCNode
 def preprocess_keys(func):
     @wraps(func)
     def wrapper(self, keys: List[str], mode: Mode, out: str):
-        n_keys = list(set([k.lower() for k in keys]))
+        n_keys = [k.lower() for k in keys]
         return func(self, n_keys, mode, out)
 
     return wrapper

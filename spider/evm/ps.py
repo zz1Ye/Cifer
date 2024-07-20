@@ -44,6 +44,7 @@ def get_impl_address(trace: dict, rcpt: dict):
 class CompleteFormParser(Parser):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
+        self.tx_spider = TransactionSpider(vm, net, Module.TX)
         self.el_parser = EventLogParser(vm, net, module)
         self.in_parser = InputParser(vm, net, module)
         self.sg_parser = SubgraphParser(vm, net, module)
@@ -54,22 +55,29 @@ class CompleteFormParser(Parser):
     @preprocess_keys
     async def parse(self, keys: List[str], mode: Mode, out: str):
         tasks = [
+            asyncio.create_task(self.tx_spider.crawl(keys, Mode.TRANS, out)),
             asyncio.create_task(self.el_parser.parse(keys, Mode.EL, out)),
             asyncio.create_task(self.in_parser.parse(keys, Mode.IN, out)),
             asyncio.create_task(self.sg_parser.parse(keys, Mode.SG, out)),
             asyncio.create_task(self.ts_parser.parse(keys, Mode.TS, out)),
         ]
-        el_q, in_q, sg_q, ts_q = await asyncio.gather(*tasks)
+        trans_q, el_q, in_q, sg_q, ts_q = await asyncio.gather(*tasks)
 
         queue = []
         for i in range(len(keys)):
-            queue.append({
-                'hash': keys[i],
-                'timestamp': ts_q[i].get('item'),
-                'subgraph': sg_q[i].get('item'),
-                'input': in_q[i].get('item'),
-                'event_logs': el_q[i].get('item')
-            })
+            trans_ = trans_q[i].get('item')
+            ts_ = ts_q[i].get('item')
+            sg_ = sg_q[i].get('item')
+            in_ = in_q[i].get('item')
+            el_ = el_q[i].get('item')
+
+            queue.append({'key': keys[i], 'item': {
+                'tx': trans_,
+                'timestamp': ts_.get("timestamp"),
+                'subgraph': {'edges': sg_.get("edges"), 'nodes': sg_.get("nodes")},
+                'input': {'func': in_.get('func'), 'args': in_.get('args')},
+                'event_logs': el_.get('event_logs')
+            }})
         return queue
 
 
@@ -96,7 +104,6 @@ class EventLogParser(Parser):
 
         tmp = {}
         for h in set(trace_dict.keys()) & set(rcpt_dict.keys()):
-            print(trace_dict[h])
             address = get_impl_address(trace_dict[h], rcpt_dict[h])
             tmp[h] = {'address': address}
 
@@ -150,6 +157,7 @@ class EventLogParser(Parser):
                                 event_logs.append(
                                     EventLog().map({
                                         'hash': k,
+                                        'address': addr,
                                         'event': f"{name}({','.join(p_p)})",
                                         'args': parse_hexbytes_dict(dict(decoded_log['args']))
                                     }).dict()
@@ -283,22 +291,41 @@ class SubgraphParser(Parser):
 class TimestampParser(Parser):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
-        self.spider = BlockSpider(vm, net, Module.BLK)
+        self.blk_spider = BlockSpider(vm, net, Module.BLK)
+        self.tx_spider = TransactionSpider(vm, net, Module.TX)
 
     @save_item
     @load_exists_item
     @preprocess_keys
-    async def parse(self, keys: List[str], mode: str, out: str):
-        queue = await self.spider.crawl(keys, Mode.BLOCK, out)
+    async def parse(self, keys: List[str], mode: Mode, out: str):
+        trans_queue = await self.tx_spider.crawl(keys, Mode.TRANS, out)
 
-        for i in range(len(queue)):
-            item = queue[i].get("item")
+        trans_dict = {}
+        blk_hash_arr = set()
+        for e in trans_queue:
+            item = e.get("item")
+            trans_dict[e.get('key')] = item
             if item is not None:
-                queue[i]['item'] = Timestamp().map({
-                    'hash': item['hash'],
-                    'timestamp': item['timestamp'],
-                    'blockNumber': item['block_number']
-                }).dict()
+                blk_hash_arr.add(item.get("block_hash"))
+
+        block_queue = await self.blk_spider.crawl(list(blk_hash_arr), Mode.BLOCK, out)
+        block_dict = {}
+        for e in block_queue:
+            item = e.get("item")
+            if item is not None:
+                block_dict[item.get('hash')] = item.get('timestamp')
+
+        queue = []
+        for k in keys:
+            if trans_dict.get(k) is None:
+                queue.append({'key': k, 'item': None})
+            else:
+                trans = trans_dict.get(k)
+                queue.append({'key': k, 'item': Timestamp().map({
+                    'hash': k,
+                    'timestamp': block_dict.get(trans.get('block_hash')),
+                    'block_number': trans.get('block_number')
+                }).dict()})
         return queue
 
 

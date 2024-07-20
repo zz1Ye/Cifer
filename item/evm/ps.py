@@ -30,11 +30,13 @@ class EventLog(Item):
     @check_source
     def map(self, source: dict):
         self.hash = source.get('hash')
+        self.address = source.get('address')
         self.event = source.get('event')
         self.args = source.get('args')
         return self
 
     hash: str = Field(default='')
+    address: str = Field(default='')
     event: str = Field(default='')
     args: dict = Field(default={})
 
