@@ -15,6 +15,7 @@ from hexbytes import HexBytes
 from web3 import Web3
 
 from item.evm.ps import Timestamp, Subgraph, Input, EventLog
+from item.evm.tx import Trace, Receipt
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
@@ -23,7 +24,7 @@ from utils.conf import Vm, Net, Module, Mode
 from utils.web3 import parse_hexbytes_dict
 
 
-def get_impl_address(trace, rcpt):
+def get_impl_address(trace: dict, rcpt: dict):
     trace_arr = trace.get('array', [])
     contract_address = rcpt.get('contract_address', None)
     address = rcpt.get('to_') if contract_address is None else contract_address
@@ -47,7 +48,7 @@ class EventLogParser(Parser):
         self.w3 = Web3(Web3.HTTPProvider(
             self.provider.get()
         ))
-        self.tx_spider = TransactionSpider(vm, net, module)
+        self.tx_spider = TransactionSpider(vm, net, Module.TX)
         self.sc_spider = ContractSpider(vm, net, Module.SC)
 
     @save_item
@@ -64,6 +65,7 @@ class EventLogParser(Parser):
 
         tmp = {}
         for h in set(trace_dict.keys()) & set(rcpt_dict.keys()):
+            print(trace_dict[h])
             address = get_impl_address(trace_dict[h], rcpt_dict[h])
             tmp[h] = {'address': address}
 
@@ -135,7 +137,7 @@ class InputParser(Parser):
         self.w3 = Web3(Web3.HTTPProvider(
             self.provider.get()
         ))
-        self.tx_spider = TransactionSpider(vm, net, module)
+        self.tx_spider = TransactionSpider(vm, net, Module.TX)
         self.sc_spider = ContractSpider(vm, net, Module.SC)
 
     @save_item
@@ -208,7 +210,7 @@ class InputParser(Parser):
 class SubgraphParser(Parser):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
-        self.spider = TransactionSpider(vm, net, module)
+        self.spider = TransactionSpider(vm, net, Module.TX)
 
     @save_item
     @check_item_exists
@@ -250,7 +252,7 @@ class SubgraphParser(Parser):
 class TimestampParser(Parser):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
-        self.spider = BlockSpider(vm, net, module)
+        self.spider = BlockSpider(vm, net, Module.BLK)
 
     @save_item
     @check_item_exists

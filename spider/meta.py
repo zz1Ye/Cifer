@@ -35,7 +35,6 @@ def save_item(func):
     @wraps(func)
     async def wrapper(self, keys: List[str], mode: Mode, out: str):
         queue = await func(self, keys, mode, out)
-
         for e in queue:
             key, item = e.get("key"), e.get("item")
             if item is not None:

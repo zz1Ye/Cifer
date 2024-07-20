@@ -33,7 +33,7 @@ class TransactionSpider(Spider):
         payload["params"] = [hash]
         req = Request(
             url=self.provider.get(),
-            method=self.rpc.get(mode).get("method"),
+            method=self.rpc.get(mode.value).get("method"),
             headers=Headers(
                 accept=HEADER.get("accept"),
                 content_type=HEADER.get("content-type"),

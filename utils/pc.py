@@ -36,7 +36,7 @@ class Job:
 
         self._status = Status.READY
         self._id = '{}-{}'.format(
-            params.get("mode"),
+            params.get("mode").value,
             params.get("key")
         )
 
