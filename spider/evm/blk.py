@@ -11,8 +11,8 @@ from typing import List
 
 from dao.meta import JsonDao
 from item.evm.blk import Block
-from settings import RPC_LIST, HEADER
-from spider.meta import Spider, check_item_exists, preprocess_keys, save_item
+from settings import HEADER
+from spider.meta import Spider, preprocess_keys, save_item, load_exists_item
 from utils.conf import Vm, Net, Module, Mode
 from utils.pc import Job, PC
 from utils.req import Request, Headers
@@ -45,7 +45,7 @@ class BlockSpider(Spider):
         return {'res': await self.fetch(req)}
 
     @save_item
-    @check_item_exists
+    @load_exists_item
     @preprocess_keys
     async def crawl(self, keys: List[str], mode: Mode, out: str):
         source = Queue()

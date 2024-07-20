@@ -20,14 +20,25 @@ def preprocess_keys(func):
     return wrapper
 
 
-def check_item_exists(func):
+def load_exists_item(func):
     @wraps(func)
-    def wrapper(self, keys: List[str], mode: Mode, out: str):
-        n_keys = [
+    async def wrapper(self, keys: List[str], mode: Mode, out: str):
+        n_keys = set([
             k for k in keys
             if not JsonDao(self.dir_path(out, k, mode)).exist()
-        ]
-        return func(self, n_keys, mode, out)
+        ])
+        item_dict = {}
+        for k in set(keys) - n_keys:
+            dao = JsonDao(self.dir_path(out, k, mode))
+            item = [e for e in dao.load()][0][0]
+            item_dict[k] = {'key': k, 'item': item}
+
+        for e in await func(self, list(n_keys), mode, out):
+            key, item = e.get("key"), e.get("item")
+            item_dict[k] = {'key': key, 'item': item}
+
+        queue = [item_dict[k] for k in keys]
+        return queue
     return wrapper
 
 
@@ -39,8 +50,9 @@ def save_item(func):
             key, item = e.get("key"), e.get("item")
             if item is not None:
                 dao = JsonDao(self.dir_path(out, key, mode))
-                dao.create()
-                dao.insert(item)
+                if not dao.exist():
+                    dao.create()
+                    dao.insert(item)
         return queue
 
     return wrapper

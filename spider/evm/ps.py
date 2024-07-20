@@ -15,11 +15,10 @@ from hexbytes import HexBytes
 from web3 import Web3
 
 from item.evm.ps import Timestamp, Subgraph, Input, EventLog
-from item.evm.tx import Trace, Receipt
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
-from spider.meta import Parser, check_item_exists, preprocess_keys, save_item
+from spider.meta import Parser, preprocess_keys, save_item, load_exists_item
 from utils.conf import Vm, Net, Module, Mode
 from utils.web3 import parse_hexbytes_dict
 
@@ -52,7 +51,7 @@ class EventLogParser(Parser):
         self.sc_spider = ContractSpider(vm, net, Module.SC)
 
     @save_item
-    @check_item_exists
+    @load_exists_item
     @preprocess_keys
     async def parse(self, keys: List[str], mode: Mode, out: str):
         tasks = [
@@ -141,7 +140,7 @@ class InputParser(Parser):
         self.sc_spider = ContractSpider(vm, net, Module.SC)
 
     @save_item
-    @check_item_exists
+    @load_exists_item
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         tasks = [
@@ -213,7 +212,7 @@ class SubgraphParser(Parser):
         self.spider = TransactionSpider(vm, net, Module.TX)
 
     @save_item
-    @check_item_exists
+    @load_exists_item
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         tasks = [
@@ -255,7 +254,7 @@ class TimestampParser(Parser):
         self.spider = BlockSpider(vm, net, Module.BLK)
 
     @save_item
-    @check_item_exists
+    @load_exists_item
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         queue = await self.spider.crawl(keys, Mode.BLOCK, out)
