@@ -9,24 +9,36 @@
 import asyncio
 import warnings
 from collections import defaultdict
-from queue import Queue
 from typing import List
 
 from hexbytes import HexBytes
 from web3 import Web3
 
-from dao.meta import JsonDao
-from item.evm.blk import Block
 from item.evm.ps import Timestamp, Subgraph, Input, EventLog
-from item.evm.sc import ABI
-from item.evm.tx import Transaction, Trace, Receipt
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
 from spider.meta import Parser, check_item_exists, preprocess_keys, save_item
-from utils.conf import Vm, Net, Module
-from utils.pc import Job, PC
+from utils.conf import Vm, Net, Module, Mode
 from utils.web3 import parse_hexbytes_dict
+
+
+def get_impl_address(trace, rcpt):
+    trace_arr = trace.get('array', [])
+    contract_address = rcpt.get('contract_address', None)
+    address = rcpt.get('to_') if contract_address is None else contract_address
+    try:
+        address = next(
+            t.get('action', {}).get('to_')
+            for t in trace_arr
+            if (
+                    t.get('action', {}).get('call_type').lower() == "delegatecall"
+                    and t.get('action', {}).get('from_') == address
+            )
+        )
+    except StopIteration:
+        pass
+    return address
 
 
 class EventLogParser(Parser):
@@ -41,10 +53,10 @@ class EventLogParser(Parser):
     @save_item
     @check_item_exists
     @preprocess_keys
-    async def parse(self, keys: List[str], mode: str, out: str):
+    async def parse(self, keys: List[str], mode: Mode, out: str):
         tasks = [
-            asyncio.create_task(self.tx_spider.crawl(keys, 'trace', out)),
-            asyncio.create_task(self.tx_spider.crawl(keys, 'rcpt', out))
+            asyncio.create_task(self.tx_spider.crawl(keys, Mode.TRACE, out)),
+            asyncio.create_task(self.tx_spider.crawl(keys, Mode.RCPT, out))
         ]
         trace_queue, rcpt_queue = await asyncio.gather(*tasks)
         trace_dict = {e.get('key'): e.get('item') for e in trace_queue}
@@ -52,23 +64,10 @@ class EventLogParser(Parser):
 
         tmp = {}
         for h in set(trace_dict.keys()) & set(rcpt_dict.keys()):
-            trace = trace_dict[h]['array']
-            rcpt = rcpt_dict[h]
-            address = rcpt['to_'] if rcpt['contract_address'] is None else rcpt['contract_address']
-            try:
-                address = next(
-                    t['action']["to_"]
-                    for t in trace
-                    if (
-                            t['action']["call_type"].lower() == "delegatecall"
-                            and t['action']["from_"] == address
-                    )
-                )
-            except StopIteration:
-                pass
+            address = get_impl_address(trace_dict[h], rcpt_dict[h])
             tmp[h] = {'address': address}
 
-        abi_queue = await self.sc_spider.crawl([v.get('address') for v in tmp.values()], 'abi', out)
+        abi_queue = await self.sc_spider.crawl([v.get('address') for v in tmp.values()], Mode.ABI, out)
         abi_dict = {e['key']: e.get('item').get('abi') for e in abi_queue if e.get('item') is not None}
 
         queue = []
@@ -144,9 +143,9 @@ class InputParser(Parser):
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         tasks = [
-            asyncio.create_task(self.tx_spider.crawl(keys, 'trans', out)),
-            asyncio.create_task(self.tx_spider.crawl(keys, 'trace', out)),
-            asyncio.create_task(self.tx_spider.crawl(keys, 'rcpt', out))
+            asyncio.create_task(self.tx_spider.crawl(keys, Mode.TRANS, out)),
+            asyncio.create_task(self.tx_spider.crawl(keys, Mode.TRACE, out)),
+            asyncio.create_task(self.tx_spider.crawl(keys, Mode.RCPT, out))
         ]
         trans_queue, trace_queue, rcpt_queue = await asyncio.gather(*tasks)
         trans_dict = {e.get('key'): e.get('item') for e in trans_queue}
@@ -155,23 +154,10 @@ class InputParser(Parser):
 
         tmp = {}
         for h in set(trans_dict.keys()) & set(trace_dict.keys()) & set(rcpt_dict.keys()):
-            trace = trace_dict[h]['array']
-            rcpt = rcpt_dict[h]
-            address = rcpt['to_'] if rcpt['contract_address'] is None else rcpt['contract_address']
-            try:
-                address = next(
-                    t['action']["to_"]
-                    for t in trace
-                    if (
-                            t['action']["call_type"].lower() == "delegatecall"
-                            and t['action']["from_"] == address
-                    )
-                )
-            except StopIteration:
-                pass
+            address = get_impl_address(trace_dict[h], rcpt_dict[h])
             tmp[h] = {'address': address, 'input': trans_dict[h]['input']}
 
-        abi_queue = await self.sc_spider.crawl([v.get('address') for v in tmp.values()], 'abi', out)
+        abi_queue = await self.sc_spider.crawl([v.get('address') for v in tmp.values()], Mode.ABI, out)
         abi_dict = {e['key']: e.get('item').get('abi') for e in abi_queue if e.get('item') is not None}
 
         queue = []
@@ -229,8 +215,8 @@ class SubgraphParser(Parser):
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
         tasks = [
-            asyncio.create_task(self.spider.crawl(keys, 'trans', out)),
-            asyncio.create_task(self.spider.crawl(keys, 'trace', out))
+            asyncio.create_task(self.spider.crawl(keys, Mode.TRANS, out)),
+            asyncio.create_task(self.spider.crawl(keys, Mode.TRACE, out))
         ]
         trans_queue, trace_queue = await asyncio.gather(*tasks)
 
@@ -270,7 +256,7 @@ class TimestampParser(Parser):
     @check_item_exists
     @preprocess_keys
     async def parse(self, keys: List[str], mode: str, out: str):
-        queue = await self.spider.crawl(keys, 'block', out)
+        queue = await self.spider.crawl(keys, Mode.BLOCK, out)
 
         for i in range(len(queue)):
             item = queue[i].get("item")

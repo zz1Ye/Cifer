@@ -13,7 +13,7 @@ from dao.meta import JsonDao
 from item.evm.blk import Block
 from settings import RPC_LIST, HEADER
 from spider.meta import Spider, check_item_exists, preprocess_keys, save_item
-from utils.conf import Vm, Net, Module
+from utils.conf import Vm, Net, Module, Mode
 from utils.pc import Job, PC
 from utils.req import Request, Headers
 
@@ -21,13 +21,12 @@ from utils.req import Request, Headers
 class BlockSpider(Spider):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
-        self.rpc = RPC_LIST.get(self.vm).get(self.module)
 
     async def get(self, **kwargs):
         mode = kwargs.get('mode')
         hash = kwargs.get('key')
 
-        if mode not in ["block"]:
+        if mode not in [Mode.BLOCK]:
             raise ValueError()
 
         payload = self.rpc.get(mode).get("payload")
@@ -43,20 +42,20 @@ class BlockSpider(Spider):
             ).get(),
             payload=payload
         )
-        return {'res': await self.fetch(req), 'task': f'blk.{mode}'}
+        return {'res': await self.fetch(req)}
 
     @save_item
     @check_item_exists
     @preprocess_keys
-    async def crawl(self, keys: List[str], mode: str, out: str):
+    async def crawl(self, keys: List[str], mode: Mode, out: str):
         source = Queue()
         for hash in keys:
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode, 'key': hash},
-                    item={'abi': Block()}[mode],
-                    dao=JsonDao(f"{out}/{hash}/{mode}.json")
+                    params={'mode': mode.value, 'key': hash},
+                    item={Mode.BLOCK: Block()}[mode],
+                    dao=JsonDao(self.dir_path(out, hash, mode))
                 )
             )
         pc = PC(source)

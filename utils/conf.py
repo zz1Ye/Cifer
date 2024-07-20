@@ -25,16 +25,32 @@ class Module(Enum):
     SC = "sc"
     PS = 'ps'
 
-    TRANS = "tx.transaction"
-    TRACE = "tx.trace"
-    RCPT = "tx.receipt"
-    BLOCK = "blk.block"
-    ABI = "sc.abi"
+    def allowed_modes(self):
+        return {
+            Module.TX: {Mode.TRANS, Mode.TRACE, Mode.RCPT},
+            Module.BLK: {Mode.BLOCK},
+            Module.SC: {Mode.ABI},
+            Module.PS: {Mode.TS, Mode.SG, Mode.IN, Mode.EL}
+        }.get(self)
 
-    TS = "ps.timestamp"
-    SG = "ps.subgraph"
-    IN = "ps.input"
-    EL = "ps.eventlog"
+
+class Mode(Enum):
+    TS = 'ts'
+    SG = 'sg'
+    IN = 'in'
+    EL = 'el'
+    TRANS = 'trans'
+    TRACE = 'trace'
+    RCPT = 'rcpt'
+    BLOCK = 'block'
+    ABI = 'abi'
+
+    @staticmethod
+    def is_allowed(mode, module):
+        modes = Module(module).allowed_modes()
+        return mode in modes
+
+
 
 
 

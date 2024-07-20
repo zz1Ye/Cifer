@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : meta.py
-@Time   : 2024/7/9 12:42
-@Author : zzYe
-
-"""
 import json
 from functools import wraps
 from typing import List
@@ -14,14 +6,14 @@ import aiohttp
 from aiohttp_retry import RetryClient, RandomRetry
 
 from dao.meta import JsonDao
-from settings import URL_DICT
-from utils.conf import Net, Vm, Module
+from settings import URL_DICT, RPC_LIST
+from utils.conf import Net, Vm, Module, Mode
 from utils.req import RPCNode
 
 
 def preprocess_keys(func):
     @wraps(func)
-    def wrapper(self, keys: List[str], mode: str, out: str):
+    def wrapper(self, keys: List[str], mode: Mode, out: str):
         n_keys = list(set([k.lower() for k in keys]))
         return func(self, n_keys, mode, out)
 
@@ -30,10 +22,10 @@ def preprocess_keys(func):
 
 def check_item_exists(func):
     @wraps(func)
-    def wrapper(self, keys: List[str], mode: str, out: str):
+    def wrapper(self, keys: List[str], mode: Mode, out: str):
         n_keys = [
             k for k in keys
-            if not JsonDao(f'{out}/{k}/{mode}.json').exist()
+            if not JsonDao(self.dir_path(out, k, mode)).exist()
         ]
         return func(self, n_keys, mode, out)
     return wrapper
@@ -41,13 +33,13 @@ def check_item_exists(func):
 
 def save_item(func):
     @wraps(func)
-    async def wrapper(self, keys: List[str], mode: str, out: str):
+    async def wrapper(self, keys: List[str], mode: Mode, out: str):
         queue = await func(self, keys, mode, out)
 
         for e in queue:
             key, item = e.get("key"), e.get("item")
             if item is not None:
-                dao = JsonDao(f'{out}/{key}/{mode}.json')
+                dao = JsonDao(self.dir_path(out, key, mode))
                 dao.create()
                 dao.insert(item)
         return queue
@@ -55,27 +47,40 @@ def save_item(func):
     return wrapper
 
 
-class Spider:
+class Meta:
     def __init__(self, vm: Vm, net: Net, module: Module):
-        self.vm = vm.value
-        self.net = net.value
-        self.module = module.value
+        self.vm = vm
+        self.net = net
+        self.module = module
+        url_dict = URL_DICT.get(self.vm.value, {}).get(self.net.value, {})
+
         self.scan = RPCNode(
-            domain=URL_DICT.get(self.vm).get(self.net).get("scan").get("domain"),
-            keys=URL_DICT.get(self.vm).get(self.net).get("scan").get("keys"),
+            domain=url_dict.get("scan", {}).get("domain"),
+            keys=url_dict.get("scan", {}).get("keys"),
         )
         self.provider = RPCNode(
-            domain=URL_DICT.get(self.vm).get(self.net).get("provider").get("domain"),
-            keys=URL_DICT.get(self.vm).get(self.net).get("provider").get("keys"),
+            domain=url_dict.get("provider", {}).get("domain"),
+            keys=url_dict.get("provider", {}).get("keys"),
         )
+        self.rpc = RPC_LIST.get(self.vm.value, {}).get(self.module.value)
         self._id = '{}_{}_{}'.format(
-            self.vm, self.net, self.module,
-            self.__class__.__qualname__
+            self.vm, self.net, self.module
+        )
+
+    def dir_path(self, out: str, key: str, mode: Mode):
+        return '{}/{}/{}/{}/{}/{}.json'.format(
+            out, self.vm.value, self.net.value,
+            self.module.value, key, mode.value
         )
 
     @property
     def id(self):
         return self._id
+
+
+class Spider(Meta):
+    def __init__(self, vm: Vm, net: Net, module: Module):
+        super().__init__(vm, net, module)
 
     def get(self, **kwargs):
         raise NotImplementedError()
@@ -110,28 +115,10 @@ class Spider:
         return content.get("result", None)
 
 
-class Parser:
+class Parser(Meta):
     def __init__(self, vm: Vm, net: Net, module: Module):
-        self.vm = vm.value
-        self.net = net.value
-        self.module = module.value
-        self.scan = RPCNode(
-            domain=URL_DICT.get(self.vm).get(self.net).get("scan").get("domain"),
-            keys=URL_DICT.get(self.vm).get(self.net).get("scan").get("keys"),
-        )
-        self.provider = RPCNode(
-            domain=URL_DICT.get(self.vm).get(self.net).get("provider").get("domain"),
-            keys=URL_DICT.get(self.vm).get(self.net).get("provider").get("keys"),
-        )
-        self._id = '{}_{}_{}'.format(
-            self.vm, self.net, self.module,
-            self.__class__.__qualname__
-        )
+        super().__init__(vm, net, module)
 
-    @property
-    def id(self):
-        return self._id
-
-    async def parse(self, keys: List[str], mode: str, out: str):
+    async def parse(self, keys: List[str], mode: Mode, out: str):
         raise NotImplementedError()
 
