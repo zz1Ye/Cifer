@@ -45,7 +45,10 @@ class ContractSpider(Spider):
             payload={}
         )
         res = await self.fetch(req)
-        return {'res': None if res is None else {'address': address, 'abi': res}}
+        if res is None or res == 'Contract source code not verified':
+            return {'res': None}
+
+        return {'res': {'address': address, 'abi': res}}
 
     @save_item
     @load_exists_item
