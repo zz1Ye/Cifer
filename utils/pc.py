@@ -70,7 +70,7 @@ class Job:
 
 
 class PC:
-    def __init__(self, source: Queue[Job], cp_ratio: int = 4, maxsize: int = 8):
+    def __init__(self, source: Queue[Job], cp_ratio: int = 2, maxsize: int = 8):
         """
         Four queue: Ready/Running/Finished/Fail
 

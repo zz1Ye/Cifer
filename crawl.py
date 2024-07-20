@@ -8,6 +8,8 @@
 """
 import asyncio
 import csv
+import os
+import shutil
 from queue import Queue
 from typing import List
 
@@ -55,6 +57,21 @@ async def main():
 
 
 asyncio.get_event_loop().run_until_complete(main())
+
+#
+# # 指定要检查的文件夹路径
+# folder_path = '../out/evm/pol/sc'
+#
+# files_and_folders = os.listdir(folder_path)
+# folders = [item for item in files_and_folders if os.path.isdir(os.path.join(folder_path, item))]
+#
+# for f in folders:
+#     dao = JsonDao(f"{folder_path}/{f}/abi.json")
+#     abi = [e for e in dao.load()][0][0].get('abi')
+#
+#     if abi == 'Contract source code not verified' or abi == "Max rate limit reached":
+#         print(f"{folder_path}/{f}")
+#         shutil.rmtree(f"{folder_path}/{f}")
 
 
 

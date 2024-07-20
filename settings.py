@@ -15,6 +15,7 @@ URL_DICT = {
             'scan': {
                 'domain': 'https://api-cn.etherscan.com/api',
                 'keys': [
+                    "JCP5B6U5RXI5I7WRC19AZEZPZ21395IJSG",
                     "7MM6JYY49WZBXSYFDPYQ3V7V3EMZWE4KJK",
                 ]
             },
@@ -30,6 +31,8 @@ URL_DICT = {
                 'domain': 'https://api.bscscan.com/api',
                 'keys': [
                     "S7N1S396ZB98XYC5WQ3IWEPDBGJKESXH5B",
+                    "NYYFYM2GM9FPCFETAMHHBXN67X7PU46EB9",
+                    "EGAQYID9BS2H4YC3WJITVZTXDHYSWIUJDS"
                 ]
             },
             'provider': {
@@ -44,6 +47,7 @@ URL_DICT = {
                 'domain': 'https://api.polygonscan.com/api',
                 'keys': [
                     "7BTFI86WFGAAD91X2AGSF7YWBWC3M4R39S",
+                    ""
                 ]
             },
             'provider': {

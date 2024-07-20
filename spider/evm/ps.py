@@ -172,16 +172,19 @@ class EventLogParser(Parser):
                         if event_signature_hex == receipt_event_signature_hex:
                             with warnings.catch_warnings():
                                 warnings.simplefilter("ignore")
-                                decoded_log = dict(contract.events[event["name"]]().process_receipt(receipt)[0])
-                                event_logs.append(
-                                    EventLog().map({
-                                        'hash': k,
-                                        'address': addr,
-                                        'event': f"{name}({','.join(p_p)})",
-                                        'args': parse_hexbytes_dict(dict(decoded_log['args']))
-                                    }).dict()
-                                )
-                                break
+                                try:
+                                    decoded_log = dict(contract.events[event["name"]]().process_receipt(receipt)[0])
+                                    event_logs.append(
+                                        EventLog().map({
+                                            'hash': k,
+                                            'address': addr,
+                                            'event': f"{name}({','.join(p_p)})",
+                                            'args': parse_hexbytes_dict(dict(decoded_log['args']))
+                                        }).dict()
+                                    )
+                                    break
+                                except:
+                                    pass
                 queue.append({
                     'key': k,
                     'item': {'event_logs': event_logs}

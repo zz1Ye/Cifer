@@ -45,7 +45,7 @@ class ContractSpider(Spider):
             payload={}
         )
         res = await self.fetch(req)
-        if res is None or res == 'Contract source code not verified':
+        if res is None or res == 'Contract source code not verified' or res == "Max rate limit reached":
             return {'res': None}
 
         return {'res': {'address': address, 'abi': res}}
