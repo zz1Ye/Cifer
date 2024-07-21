@@ -6,13 +6,14 @@ import aiohttp
 from aiohttp_retry import RetryClient, RandomRetry
 
 from dao.meta import JsonDao
-from settings import URL_DICT, RPC_LIST
+from item.meta import Item
+from settings import URL, RPC
 from utils.conf import Net, Vm, Module, Mode
 from utils.req import RPCNode
 
 
 class Result:
-    def __init__(self, key, item: dict = None):
+    def __init__(self, key, item: Item = None):
         self.key = key
         self.item = item
 
@@ -22,6 +23,28 @@ class ResultQueue:
         if queue is None:
             queue = []
         self.queue = queue
+        self.index = 0
+
+    def __iter__(self):
+        self.index = 0
+        return self
+
+    def __next__(self):
+        if self.index < len(self.queue):
+            result = self.queue[self.index]
+            self.index += 1
+            return result
+        else:
+            raise StopIteration
+
+    def __getitem__(self, index):
+        return self.queue[index]
+
+    def __setitem__(self, index, value):
+        self.queue[index] = value
+
+    def __len__(self):
+        return len(self.queue)
 
     def add(self, element: Result):
         self.queue.append(element)
@@ -61,14 +84,12 @@ def load_exists_item(func):
         for k in set(keys) - n_keys:
             dao = JsonDao(self.dir_path(out, k, mode))
             item = [e for e in dao.load()][0][0]
-            item_dict[k] = {'key': k, 'item': item}
+            item_dict[k] = Result(key=k, item=mode.new_mapping_item().map(item))
 
         for e in await func(self, list(n_keys), mode, out):
-            key, item = e.get("key"), e.get("item")
-            item_dict[key] = {'key': key, 'item': item}
+            item_dict[e.get("key")] = e
 
-        queue = [item_dict[k] for k in keys]
-        return queue
+        return ResultQueue(queue=[item_dict[k] for k in keys])
     return wrapper
 
 
@@ -77,12 +98,12 @@ def save_item(func):
     async def wrapper(self, keys: List[str], mode: Mode, out: str):
         queue = await func(self, keys, mode, out)
         for e in queue:
-            key, item = e.get("key"), e.get("item")
+            key, item = e.key, e.item
             if item is not None:
                 dao = JsonDao(self.dir_path(out, key, mode))
                 if not dao.exist():
                     dao.create()
-                    dao.insert(item)
+                    dao.insert(item.dict())
         return queue
 
     return wrapper
@@ -93,17 +114,17 @@ class Meta:
         self.vm = vm
         self.net = net
         self.module = module
-        url_dict = URL_DICT.get(self.vm.value, {}).get(self.net.value, {})
+        url = URL.get(self.vm.value, {}).get(self.net.value, {})
 
         self.scan = RPCNode(
-            domain=url_dict.get("scan", {}).get("domain"),
-            keys=url_dict.get("scan", {}).get("keys"),
+            domain=url.get("scan", {}).get("domain"),
+            keys=url.get("scan", {}).get("keys"),
         )
         self.provider = RPCNode(
-            domain=url_dict.get("provider", {}).get("domain"),
-            keys=url_dict.get("provider", {}).get("keys"),
+            domain=url.get("provider", {}).get("domain"),
+            keys=url.get("provider", {}).get("keys"),
         )
-        self.rpc = RPC_LIST.get(self.vm.value, {}).get(self.module.value)
+        self.rpc = RPC.get(self.vm.value, {}).get(self.module.value)
         self._id = '{}_{}_{}'.format(
             self.vm, self.net, self.module
         )
@@ -123,10 +144,10 @@ class Spider(Meta):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
 
-    def get(self, **kwargs):
+    async def get(self, **kwargs) -> Result:
         raise NotImplementedError()
 
-    async def crawl(self, keys: List[str], mode: str, out: str):
+    async def crawl(self, keys: List[str], mode: str, out: str) -> ResultQueue:
         raise NotImplementedError()
 
     @staticmethod
@@ -160,6 +181,6 @@ class Parser(Meta):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
 
-    async def parse(self, keys: List[str], mode: Mode, out: str):
+    async def parse(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
         raise NotImplementedError()
 

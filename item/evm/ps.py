@@ -6,9 +6,29 @@
 @Author : zzYe
 
 """
+from typing import List
+
 from pydantic import Field
 
 from item.meta import Item, check_source, snake_to_camel
+
+
+class CompleteForm(Item):
+    @snake_to_camel
+    @check_source
+    def map(self, source: dict):
+        self.tx = source.get('tx')
+        self.timestamp = source.get('timestamp')
+        self.subgraph = source.get('subgraph')
+        self.input = source.get('input')
+        self.event_logs = source.get('event_logs')
+        return self
+
+    tx: dict = Field(default={})
+    timestamp: str = Field(default='')
+    subgraph: dict = Field(default={})
+    input: dict = Field(default={})
+    event_logs: dict = Field(default={})
 
 
 class Input(Item):
@@ -39,6 +59,21 @@ class EventLog(Item):
     address: str = Field(default='')
     event: str = Field(default='')
     args: dict = Field(default={})
+
+
+class EventLogs(Item):
+    @snake_to_camel
+    @check_source
+    def map(self, source: dict):
+        array = []
+        for e in source.get('array'):
+            element = EventLog()
+            element.map(e)
+            array.append(element)
+        self.array = array
+        return self
+
+    array: List[EventLog] = Field(default=[])
 
 
 class Timestamp(Item):

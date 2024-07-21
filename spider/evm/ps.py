@@ -8,17 +8,16 @@
 """
 import asyncio
 import warnings
-from collections import defaultdict
 from typing import List
 
 from hexbytes import HexBytes
 from web3 import Web3
 
-from item.evm.ps import Timestamp, Subgraph, Input, EventLog
+from item.evm.ps import Timestamp, Subgraph, Input, EventLog, EventLogs, CompleteForm
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
-from spider.meta import Parser, preprocess_keys, save_item, load_exists_item
+from spider.meta import Parser, preprocess_keys, save_item, load_exists_item, ResultQueue, Result
 from utils.conf import Vm, Net, Module, Mode
 from utils.web3 import parse_hexbytes_dict
 
@@ -63,26 +62,29 @@ class CompleteFormParser(Parser):
 
         common_idxs = set(range(len(keys)))
         for q in [trans_q, el_q, in_q, sg_q, ts_q]:
-            common_idxs &= set([i for i, e in enumerate(q) if e['item'] is not None])
+            common_idxs &= set(q.get_non_none_idx())
 
-        queue = []
+        queue = ResultQueue()
         for i, k in enumerate(keys):
             if i not in common_idxs:
-                queue.append({'key': k, 'item': None})
+                queue.add(Result(key=k, item=None))
             else:
-                trans_ = trans_q[i].get('item')
-                ts_ = ts_q[i].get('item')
-                sg_ = sg_q[i].get('item')
-                in_ = in_q[i].get('item')
-                el_ = el_q[i].get('item')
+                trans_ = trans_q[i].item.dict()
+                ts_ = ts_q[i].item.dict()
+                sg_ = sg_q[i].item.dict()
+                in_ = in_q[i].item.dict()
+                el_ = el_q[i].item.dict()
 
-                queue.append({'key': keys[i], 'item': {
-                    'tx': trans_,
-                    'timestamp': ts_.get("timestamp"),
-                    'subgraph': {'edges': sg_.get("edges"), 'nodes': sg_.get("nodes")},
-                    'input': {'func': in_.get('func'), 'args': in_.get('args')},
-                    'event_logs': el_.get('event_logs')
-                }})
+                queue.add(Result(
+                    key=k,
+                    item=CompleteForm().map({
+                        'tx': trans_,
+                        'timestamp': ts_.get("timestamp"),
+                        'subgraph': {'edges': sg_.get("edges"), 'nodes': sg_.get("nodes")},
+                        'input': {'func': in_.get('func'), 'args': in_.get('args')},
+                        'event_logs': el_.get('event_logs')
+                    })
+                ))
         return queue
 
 
@@ -107,27 +109,24 @@ class EventLogParser(Parser):
 
         common_idxs = set(range(len(keys)))
         for q in [trace_queue, rcpt_queue]:
-            common_idxs &= set([i for i, e in enumerate(q) if e['item'] is not None])
+            common_idxs &= set(q.get_non_none_idx())
 
-        addresses = {}
+        addresses = []
         for i in common_idxs:
-            item = rcpt_queue[i].get('item')
-            address = item.get('contract_address', None)
-            address = item.get('to_') if address is None else address
-            addresses[address] = get_impl_address(address, trace_queue[i].get('item'))
+            for i in common_idxs:
+                address = rcpt_queue[i].item.get_contract_address()
+                addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
 
-            for log in item.get('logs', []):
-                address = log.get("address", None)
-                if address is not None:
-                    addresses[address] = get_impl_address(address, trace_queue[i].get('item'))
+                for a in rcpt_queue[i].item.get_event_sources():
+                    addresses.append(get_impl_address(a, trace_queue[i].item.dict()))
 
-        abi_queue = await self.sc_spider.crawl([v for _, v in addresses.items()], Mode.ABI, out)
-        abi_dict = {e['key']: e.get('item').get('abi') for e in abi_queue if e.get('item') is not None}
+        abi_queue = await self.sc_spider.crawl(list(set(addresses)), Mode.ABI, out)
+        abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
 
-        queue = []
+        queue = ResultQueue()
         for i, k in enumerate(keys):
             if i not in common_idxs:
-                queue.append({'key': k, 'item': None})
+                queue.add(Result(key=k, item=None))
             else:
                 receipt = self.w3.eth.get_transaction_receipt(HexBytes(k))
                 event_logs = []
@@ -185,10 +184,10 @@ class EventLogParser(Parser):
                                     break
                                 except:
                                     pass
-                queue.append({
-                    'key': k,
-                    'item': {'event_logs': event_logs}
-                })
+                queue.add(Result(
+                    key=k,
+                    item=EventLogs().map({'array': event_logs}),
+                ))
         return queue
 
 
@@ -214,28 +213,26 @@ class InputParser(Parser):
 
         common_idxs = set(range(len(keys)))
         for q in [trans_queue, trace_queue, rcpt_queue]:
-            common_idxs &= set([i for i, e in enumerate(q) if e['item'] is not None])
+            common_idxs &= set(q.get_non_none_idx())
 
-        addresses = {}
+        addresses = []
         for i in common_idxs:
-            item = rcpt_queue[i].get('item')
-            address = item.get('contract_address', None)
-            address = item.get('to_') if address is None else address
-            addresses[i] = address
+            address = rcpt_queue[i].item.get_contract_address()
+            addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
+        abi_queue = await self.sc_spider.crawl(addresses, Mode.ABI, out)
+        abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
 
-        abi_queue = await self.sc_spider.crawl([v for _, v in addresses.items()], Mode.ABI, out)
-        abi_dict = {e['key']: e.get('item').get('abi') for e in abi_queue if e.get('item') is not None}
-
-        queue = []
+        queue = ResultQueue()
         for i, k in enumerate(keys):
             if i not in common_idxs:
-                queue.append({'key': k, 'item': None})
+                queue.add(Result(key=k, item=None))
             else:
-                address = addresses[i]
+                address = rcpt_queue[i].item.get_contract_address()
+                address = get_impl_address(address, trace_queue[i].item.dict())
                 if address not in abi_dict:
-                    queue.append({'key': k, 'item': None})
+                    queue.add(Result(key=k, item=None))
                 else:
-                    item = trans_queue[i].get('item')
+                    item = trans_queue[i].item.dict()
                     function_signature = item['input'][:10]
                     input = {'func': '', 'args': {}}
                     if len(function_signature) == 10:
@@ -253,7 +250,7 @@ class InputParser(Parser):
                                     abi['type'] == 'function' and abi.get('name') == function.function_identifier
                                 ), None)
                         except:
-                            queue.append({'key': k, 'item': None})
+                            queue.add(Result(key=k, item=None))
                             continue
 
                         if function_abi_entry:
@@ -272,14 +269,14 @@ class InputParser(Parser):
 
                             input["func"] = f"{function.function_identifier}({','.join(formal_params)})"
                             input["args"] = parse_hexbytes_dict(dict(args))
-                    queue.append({
-                        'key': k,
-                        'item': Input().map({
+                    queue.add(Result(
+                        key=k,
+                        item=Input().map({
                             'hash': k,
                             'func': input["func"],
                             'args': input["args"]
-                        }).dict()
-                    })
+                        })
+                    ))
         return queue
 
 
@@ -299,20 +296,20 @@ class SubgraphParser(Parser):
         trans_queue, trace_queue = await asyncio.gather(*tasks)
         common_idxs = set(range(len(keys)))
         for q in [trans_queue, trace_queue]:
-            common_idxs &= set([i for i, e in enumerate(q) if e['item'] is not None])
+            common_idxs &= set(q.get_non_none_idx())
 
-        queue = []
+        queue = ResultQueue()
         for i, k in enumerate(keys):
             if i not in common_idxs:
-                queue.append({'key': k, 'item': None})
+                queue.add(Result(key=k, item=None))
             else:
                 paths = []
-                trans = trans_queue[i]
+                trans = trans_queue[i].item.dict()
                 paths.append({
                     'from': trans.get('item').get('from_'),
                     'to': trans.get('item').get('to_'),
                 })
-                trace = trace_queue[i]
+                trace = trace_queue[i].item.dict()
                 paths = paths + [
                     {
                         'from': t.get('action').get('from_'),
@@ -320,10 +317,13 @@ class SubgraphParser(Parser):
                     }
                     for t in trace.get('item')['array']
                 ]
-                queue.append({'key': k, 'item': Subgraph().map({
-                    'hash': k,
-                    'paths': paths
-                }).dict()})
+                queue.add(Result(
+                    key=k,
+                    item=Subgraph().map({
+                        'hash': k,
+                        'paths': paths
+                    })
+                ))
         return queue
 
 
@@ -336,35 +336,40 @@ class TimestampParser(Parser):
     @save_item
     @load_exists_item
     @preprocess_keys
-    async def parse(self, keys: List[str], mode: Mode, out: str):
+    async def parse(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
         trans_queue = await self.tx_spider.crawl(keys, Mode.TRANS, out)
 
         trans_dict = {}
         blk_hash_arr = set()
         for e in trans_queue:
-            item = e.get("item")
-            trans_dict[e.get('key')] = item
-            if item is not None:
-                blk_hash_arr.add(item.get("block_hash"))
+            trans_dict[e.key] = e.item
+            if e.item is not None:
+                blk_hash_arr.add(e.item.dict().get("block_hash"))
 
         block_queue = await self.blk_spider.crawl(list(blk_hash_arr), Mode.BLOCK, out)
         block_dict = {}
         for e in block_queue:
-            item = e.get("item")
+            item = e.item.dict()
             if item is not None:
                 block_dict[item.get('hash')] = item.get('timestamp')
 
-        queue = []
+        queue = ResultQueue()
         for k in keys:
             if trans_dict.get(k) is None:
-                queue.append({'key': k, 'item': None})
+                queue.add(Result(
+                    key=k,
+                    item=None
+                ))
             else:
-                trans = trans_dict.get(k)
-                queue.append({'key': k, 'item': Timestamp().map({
-                    'hash': k,
-                    'timestamp': block_dict.get(trans.get('block_hash')),
-                    'block_number': trans.get('block_number')
-                }).dict()})
+                trans = trans_dict.get(k).item.dict()
+                queue.add(Result(
+                    key=k,
+                    item=Timestamp().map({
+                        'hash': k,
+                        'timestamp': block_dict.get(trans.get('block_hash')),
+                        'block_number': trans.get('block_number')
+                    })
+                ))
         return queue
 
 

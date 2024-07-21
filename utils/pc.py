@@ -1,37 +1,28 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : pc.py
-@Time   : 2024/7/11 17:44
-@Author : zzYe
-
-"""
 import asyncio
+import logging
 from enum import Enum
 from queue import Queue
 
 from pybloom import BloomFilter
 
 from dao.meta import Dao
-from item.meta import Item
-from spider.meta import Spider
+from spider.meta import Spider, Result
 
 
 class Status(Enum):
     READY = 'ready'
     RUNNING = 'running'
     FINISHED = 'finished'
-    FAIL = 'fail'
 
 
 class Job:
     def __init__(
-            self, spider: Spider, params: dict,
-            item: Item, dao: Dao
+            self, spider: Spider,
+            params: dict, dao: Dao
     ):
         self.spider = spider
         self.params = params
-        self.item = item
+        self.res = Result(key=params.get("key"), item=None)
         self.dao = dao
 
         self._status = Status.READY
@@ -54,32 +45,22 @@ class Job:
     async def run(self):
         self._status = Status.RUNNING
         try:
-            res = await self.spider.get(
+            self.res = await self.spider.get(
                 **self.params
             )
-            source = res.get('res')
-            if source is not None:
-                self.item.map(source)
-                self._status = Status.FINISHED
-                return self.item
-            else:
-                self._status = Status.FAIL
-        except Exception as e:
-            self._status = Status.FAIL
-        return None
+        except (NotImplementedError, ValueError) as e:
+            logging.error(e)
+        self._status = Status.FINISHED
 
 
 class PC:
     def __init__(self, source: Queue[Job], cp_ratio: int = 2, maxsize: int = 8):
         """
-        Four queue: Ready/Running/Finished/Fail
-
-        :param maxsize:
+        Three queue: Ready/Running/Finished
         """
         self.re_q = Queue()
         self.ru_q = asyncio.Queue(maxsize=maxsize)
         self.fi_q = Queue()
-        self.fa_q = Queue()
 
         if not(isinstance(cp_ratio, int) and cp_ratio >= 1):
             raise ValueError()
@@ -111,11 +92,8 @@ class PC:
         while not (self.re_q.qsize() == 0 and self.ru_q.qsize() == 0):
             job = await self.ru_q.get()
             await job.run()
-
-            if job.status == Status.FINISHED:
-                self.fi_q.put(job)
-            else:
-                self.fa_q.put(job)
+            assert job.status == Status.FINISHED
+            self.fi_q.put(job)
             self._count += 1
 
             if self._count % 1000 == 0:

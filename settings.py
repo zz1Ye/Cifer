@@ -9,7 +9,7 @@ HEADER = {
     ]
 }
 
-URL_DICT = {
+URL = {
     'evm': {
         'eth': {
             'scan': {
@@ -60,7 +60,7 @@ URL_DICT = {
     },
 }
 
-RPC_LIST = {
+RPC = {
     "evm": {
         "blk": {
             "block": {
@@ -134,36 +134,5 @@ RPC_LIST = {
         }
     }
 }
-
-# APIS = {
-#     "eth": "https://api.etherscan.io/api",
-#     "bsc": "",
-#     "pol": ""
-# }
-#
-#
-# API_KEYS = {
-#     "eth": [
-#         "7MM6JYY49WZBXSYFDPYQ3V7V3EMZWE4KJK"
-#     ],
-#     "bsc": [
-#         "S7N1S396ZB98XYC5WQ3IWEPDBGJKESXH5B"
-#     ],
-#     "pol": [
-#         "7BTFI86WFGAAD91X2AGSF7YWBWC3M4R39S"
-#     ]
-# }
-#
-# PROVIDERS = {
-#     "eth": [
-#         "https://mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
-#     ],
-#     "bsc": [
-#         "https://bsc-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
-#     ],
-#     "pol": [
-#         "https://polygon-mainnet.chainnodes.org/f21d29b2-62e8-490c-97fe-01ac44dd6344"
-#     ]
-# }
 
 

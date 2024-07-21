@@ -8,6 +8,11 @@
 """
 from enum import Enum
 
+from item.evm.blk import Block
+from item.evm.ps import Timestamp, Subgraph, Input, EventLog, CompleteForm
+from item.evm.sc import ABI
+from item.evm.tx import Transaction, Trace, Receipt
+
 
 class Vm(Enum):
     EVM = "evm"
@@ -45,6 +50,20 @@ class Mode(Enum):
     RCPT = 'rcpt'
     BLOCK = 'block'
     ABI = 'abi'
+
+    def new_mapping_item(self):
+        return {
+            Mode.TRANS: Transaction(),
+            Mode.TRACE: Trace(),
+            Mode.RCPT: Receipt(),
+            Mode.BLOCK: Block(),
+            Mode.ABI: ABI(),
+            Mode.TS: Timestamp(),
+            Mode.SG: Subgraph(),
+            Mode.IN: Input(),
+            Mode.EL: EventLog(),
+            Mode.CF: CompleteForm()
+        }.get(self)
 
     @staticmethod
     def is_allowed(mode, module):

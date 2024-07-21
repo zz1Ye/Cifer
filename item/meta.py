@@ -38,5 +38,7 @@ class Item(BaseModel):
             str(self.dict())
         )
 
+    @snake_to_camel
+    @check_source
     def map(self, source: dict):
         raise NotImplementedError()

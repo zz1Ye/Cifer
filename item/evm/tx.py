@@ -105,8 +105,8 @@ class TraceElement(Item):
     def map(self, source: dict):
         action = TraceAction()
         result = TraceResult()
-        action.map(source.get('action') if 'action' in source else None)
-        result.map(source.get('result') if 'result' in source else None)
+        action.map(source.get('action') if 'action' in source else {})
+        result.map(source.get('result') if 'result' in source else {})
 
         self.action = action
         self.block_hash = source.get('blockHash')
@@ -135,6 +135,8 @@ class Trace(Item):
     Url:
         https://www.chainnodes.org/docs/ethereum/trace_transaction
     """
+    array: List[TraceElement] = Field(default=[])
+
     @snake_to_camel
     @check_source
     def map(self, source: dict):
@@ -146,7 +148,16 @@ class Trace(Item):
         self.array = array
         return self
 
-    array: List[TraceElement] = Field(default=[])
+    def get_delegate_call(self) -> list:
+        return [
+            {'from': action.from_, 'to': action.to_}
+
+            for action in (
+                e.action
+                for e in self.array
+                if e.action.call_type == "delegatecall"
+            )
+        ]
 
 
 class ReceiptLog(Item):
@@ -191,7 +202,7 @@ class Receipt(Item):
             logs.append(log)
         self.block_number = source.get('blockNumber')
         self.block_hash = source.get('blockHash')
-        self.contract_address = source.get('contractAddress')
+        self.contract_address = source.get('contractAddress', '')
         self.effective_gas_price = source.get('effectiveGasPrice')
         self.from_ = source.get('from')
         self.logs = logs
@@ -202,6 +213,16 @@ class Receipt(Item):
         self.transaction_index = source.get('transactionIndex')
         self.type = source.get('type')
         return self
+
+    def get_event_sources(self):
+        return list(set([
+            log.address
+            for log in self.logs
+            if log.address is not None
+        ]))
+
+    def get_contract_address(self):
+        return self.contract_address if self.contract_address != '' else self.to_
 
     block_number: str = Field(default='')
     block_hash: str = Field(default='')

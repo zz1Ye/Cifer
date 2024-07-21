@@ -12,7 +12,7 @@ from typing import List
 from dao.meta import JsonDao
 from item.evm.sc import ABI
 from settings import HEADER
-from spider.meta import Spider, preprocess_keys, save_item, load_exists_item
+from spider.meta import Spider, preprocess_keys, save_item, load_exists_item, Result, ResultQueue
 from utils.conf import Net, Vm, Module, Mode
 from utils.pc import Job, PC
 from utils.req import Request, Headers, Url
@@ -22,7 +22,7 @@ class ContractSpider(Spider):
     def __init__(self, vm: Vm, net: Net, module: Module):
         super().__init__(vm, net, module)
 
-    async def get(self, **kwargs):
+    async def get(self, **kwargs) -> Result:
         mode = kwargs.get('mode')
         address = kwargs.get('key')
 
@@ -45,37 +45,33 @@ class ContractSpider(Spider):
             payload={}
         )
         res = await self.fetch(req)
-        if res is None or res == 'Contract source code not verified' or res == "Max rate limit reached":
-            return {'res': None}
-
-        return {'res': {'address': address, 'abi': res}}
+        return Result(
+            key=address,
+            item={
+                Mode.ABI: ABI().map({'address': address, 'abi': res})
+            }.get(mode) if res not in [
+                None, 'Contract source code not verified',
+                'Max rate limit reached'
+            ] else None
+        )
 
     @save_item
     @load_exists_item
     @preprocess_keys
-    async def crawl(self, keys: List[str], mode: Mode, out: str):
+    async def crawl(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
         source = Queue()
         for address in keys:
             source.put(
                 Job(
                     spider=self,
                     params={'mode': mode, 'key': address},
-                    item={Mode.ABI: ABI()}[mode],
                     dao=JsonDao(self.dir_path(out, address, mode))
                 )
             )
         pc = PC(source)
         await pc.run()
-        queue = []
+        queue = ResultQueue()
         while pc.fi_q.qsize() != 0:
-            job = pc.fi_q.get()
-            queue.append({'key': job.id.split('-')[1], 'item': job.item.dict()})
-        while pc.fa_q.qsize() != 0:
-            job = pc.fa_q.get()
-            queue.append({'key': job.id.split('-')[1], 'item': None})
+            queue.add(pc.fi_q.get())
 
         return queue
-
-
-
-
