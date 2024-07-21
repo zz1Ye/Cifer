@@ -11,6 +11,36 @@ from utils.conf import Net, Vm, Module, Mode
 from utils.req import RPCNode
 
 
+class Result:
+    def __init__(self, key, item: dict = None):
+        self.key = key
+        self.item = item
+
+
+class ResultQueue:
+    def __init__(self, queue: List[Result] = None):
+        if queue is None:
+            queue = []
+        self.queue = queue
+
+    def add(self, element: Result):
+        self.queue.append(element)
+
+    def get_none_idx(self):
+        return [
+            i
+            for i, e in enumerate(self.queue)
+            if e.item is None
+        ]
+
+    def get_non_none_idx(self):
+        return [
+            i
+            for i, e in enumerate(self.queue)
+            if e.item is not None
+        ]
+
+
 def preprocess_keys(func):
     @wraps(func)
     def wrapper(self, keys: List[str], mode: Mode, out: str):

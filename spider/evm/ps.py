@@ -34,7 +34,7 @@ def get_impl_address(address: str, trace: dict):
                     and t.get('action', {}).get('from_').lower() == address.lower()
             )
         )
-    except StopIteration:
+    except (StopIteration, Exception):
         pass
     return address
 
