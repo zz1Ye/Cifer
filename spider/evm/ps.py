@@ -283,14 +283,11 @@ class InputParser(Parser):
             if res is None:
                 queue.add(Result(key=k, item=None))
             else:
-                queue.add(Result(
-                    key=k,
-                    item=Input().map({
-                        'hash': k,
-                        'func': res["func"],
-                        'args': res["args"]
-                    })
-                ))
+                queue.add(Result(key=k, item=Input().map({
+                    'hash': k,
+                    'func': res["func"],
+                    'args': res["args"]
+                })))
         return queue
 
 
