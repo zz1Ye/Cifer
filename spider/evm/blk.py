@@ -67,8 +67,6 @@ class BlockSpider(Spider):
             )
         pc = PC(source)
         await pc.run()
-        pc = PC(source)
-        await pc.run()
         queue = ResultQueue()
         while pc.fi_q.qsize() != 0:
             queue.add(pc.fi_q.get())
