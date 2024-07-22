@@ -99,6 +99,74 @@ class EventLogParser(Parser):
         self.tx_spider = TransactionSpider(vm, net, Module.TX)
         self.sc_spider = ContractSpider(vm, net, Module.SC)
 
+    def get_event_signature(self, event: dict):
+        param_type, param_name = [], []
+        for param in event["inputs"]:
+            if "components" not in param:
+                param_type.append(param["type"])
+                param_name.append(param["name"])
+            else:
+                param_type.append(f"({','.join([p['type'] for p in param['components']])})")
+                param_name.append(f"({','.join([p['name'] for p in param['components']])})")
+
+        inputs = ",".join(param_type)
+        pt = ",".join([e.lstrip('(').rstrip(')') for e in param_type]).split(",")
+        pn = ",".join([e.lstrip('(').rstrip(')') for e in param_name]).split(",")
+        pv = [f"{a} {b}" for a, b in zip(pt, pn)]
+
+        # Hash event signature
+        event_signature_text = f"{event['name']}({inputs})"
+        event_signature = self.w3.to_hex(
+            self.w3.keccak(text=event_signature_text)
+        )
+        return pv, event_signature
+
+    def decoded_log(self, event, contract, receipt):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                decoded_log = dict(
+                    contract.events[event["name"]]().process_receipt(receipt)[0]
+                )
+                return decoded_log
+            except Exception as e:
+                logging.error(e)
+        return None
+
+    def parse_event_logs(self, hash: str, abi_dict: dict):
+        event_logs = []
+        receipt = self.w3.eth.get_transaction_receipt(HexBytes(hash))
+        for idx, log in enumerate(receipt["logs"]):
+            addr = log["address"].lower()
+            if addr not in abi_dict:
+                continue
+
+            contract = self.w3.eth.contract(
+                self.w3.to_checksum_address(addr), abi=abi_dict[addr]
+            )
+            receipt_event_signature = self.w3.to_hex(log["topics"][0])
+
+            events = [e for e in contract.abi if e["type"] == "event"]
+            for event in events:
+                pv, event_signature = self.get_event_signature(event)
+                # Find match between log's event signature and ABI's event signature
+                if event_signature != receipt_event_signature:
+                    continue
+
+                decoded_log = self.decoded_log(event, contract, receipt)
+                if decoded_log is None:
+                    continue
+                event_logs.append(
+                    EventLog().map({
+                        'hash': hash,
+                        'address': addr,
+                        'event': f"{event['name']}({','.join(pv)})",
+                        'args': parse_hexbytes_dict(dict(decoded_log['args']))
+                    }).dict()
+                )
+                break
+        return event_logs
+
     @save_item
     @load_exists_item
     @preprocess_keys
@@ -112,15 +180,12 @@ class EventLogParser(Parser):
         common_idxs = set(range(len(keys)))
         for q in [trace_queue, rcpt_queue]:
             common_idxs &= set(q.get_non_none_idx())
-
-        addresses = []
-        for i in common_idxs:
-            for i in common_idxs:
-                address = rcpt_queue[i].item.get_contract_address()
-                addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
-
-                for a in rcpt_queue[i].item.get_event_sources():
-                    addresses.append(get_impl_address(a, trace_queue[i].item.dict()))
+        addresses = [
+            get_impl_address(a, trace_queue[i])
+            for i in common_idxs
+            for a in [rcpt_queue[i].item.get_contract_address()] +
+                     [rcpt_queue[i].item.get_event_sources()]
+        ]
 
         abi_queue = await self.sc_spider.crawl(list(set(addresses)), Mode.ABI, out)
         abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
@@ -129,67 +194,12 @@ class EventLogParser(Parser):
         for i, k in enumerate(keys):
             if i not in common_idxs:
                 queue.add(Result(key=k, item=None))
-            else:
-                receipt = self.w3.eth.get_transaction_receipt(HexBytes(k))
-                event_logs = []
-                for idx, log in enumerate(receipt["logs"]):
-                    addr = log["address"].lower()
-                    if addr not in abi_dict:
-                        continue
-
-                    contract = self.w3.eth.contract(
-                        self.w3.to_checksum_address(addr), abi=abi_dict[addr]
-                    )
-                    receipt_event_signature_hex = self.w3.to_hex(
-                        log["topics"][0]
-                    )
-
-                    events = [e for e in contract.abi if e["type"] == "event"]
-                    for event in events:
-                        # Get event signature components
-                        name = event["name"]
-                        param_type, param_name = [], []
-
-                        for param in event["inputs"]:
-                            if "components" not in param:
-                                param_type.append(param["type"])
-                                param_name.append(param["name"])
-                            else:
-                                param_type.append(f"({','.join([p['type'] for p in param['components']])})")
-                                param_name.append(f"({','.join([p['name'] for p in param['components']])})")
-
-                        inputs = ",".join(param_type)
-                        p_t = ",".join([e.lstrip('(').rstrip(')') for e in param_type]).split(",")
-                        p_n = ",".join([e.lstrip('(').rstrip(')') for e in param_name]).split(",")
-                        p_p = [f"{a} {b}" for a, b in zip(p_t, p_n)]
-
-                        # Hash event signature
-                        event_signature_text = f"{name}({inputs})"
-                        event_signature_hex = self.w3.to_hex(
-                            self.w3.keccak(text=event_signature_text)
-                        )
-
-                        # Find match between log's event signature and ABI's event signature
-                        if event_signature_hex == receipt_event_signature_hex:
-                            with warnings.catch_warnings():
-                                warnings.simplefilter("ignore")
-                                try:
-                                    decoded_log = dict(contract.events[event["name"]]().process_receipt(receipt)[0])
-                                    event_logs.append(
-                                        EventLog().map({
-                                            'hash': k,
-                                            'address': addr,
-                                            'event': f"{name}({','.join(p_p)})",
-                                            'args': parse_hexbytes_dict(dict(decoded_log['args']))
-                                        }).dict()
-                                    )
-                                    break
-                                except:
-                                    pass
-                queue.add(Result(
-                    key=k,
-                    item=EventLogs().map({'array': event_logs}),
-                ))
+                continue
+            res = self.parse_event_logs(k, abi_dict)
+            if res is None:
+                queue.add(Result(key=k, item=None))
+                continue
+            queue.add(Result(key=k, item=EventLogs().map({'array': res})))
         return queue
 
 
