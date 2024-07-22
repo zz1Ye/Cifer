@@ -27,7 +27,7 @@ class Dao:
     def exist(self) -> bool:
         return os.path.isfile(self.fpath)
 
-    def delete(self) -> bool:
+    def drop(self) -> bool:
         try:
             if os.path.exists(self.fpath):
                 os.remove(self.fpath)
