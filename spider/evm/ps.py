@@ -7,6 +7,7 @@
 
 """
 import asyncio
+import logging
 import warnings
 from typing import List
 
@@ -14,6 +15,7 @@ from hexbytes import HexBytes
 from web3 import Web3
 
 from item.evm.ps import Timestamp, Subgraph, Input, EventLog, EventLogs, CompleteForm
+from item.evm.sc import ABI
 from spider.evm.blk import BlockSpider
 from spider.evm.sc import ContractSpider
 from spider.evm.tx import TransactionSpider
@@ -200,6 +202,45 @@ class InputParser(Parser):
         self.tx_spider = TransactionSpider(vm, net, Module.TX)
         self.sc_spider = ContractSpider(vm, net, Module.SC)
 
+    def parse_input(self, input: str, abi: ABI):
+        if len(input[:10]) != 10:
+            return None
+
+        try:
+            contract = self.w3.eth.contract(
+                self.w3.to_checksum_address(abi.address),
+                abi=abi.abi
+            )
+            func = contract.get_function_by_selector(input[:10])
+            func_id = func.function_identifier
+            func_entry = next((
+                abi for abi in contract.abi if
+                abi['type'] == 'function' and abi.get('name') == func_id
+            ), None)
+            if not func_entry:
+                return None
+            decoded_input = contract.decode_function_input(input)
+            args = {
+                param['name']: decoded_input[1].get(param['name'], None)
+                for param in func_entry['inputs']
+            }
+            formal_params = ','.join([
+                f"{param['type']} {param['name']}"
+                for param in func_entry['inputs']
+            ])
+            return {
+                'func': f"{func_id}({','.join(formal_params)})",
+                'args': parse_hexbytes_dict(dict({
+                    k: '0x' + v.hex().lstrip('0')
+                    if isinstance(v, bytes) else v
+                    for k, v in args.items()
+                }))
+
+            }
+        except Exception as e:
+            logging.error(e)
+            return None
+
     @save_item
     @load_exists_item
     @preprocess_keys
@@ -226,57 +267,30 @@ class InputParser(Parser):
         for i, k in enumerate(keys):
             if i not in common_idxs:
                 queue.add(Result(key=k, item=None))
+                continue
+
+            address = rcpt_queue[i].item.get_contract_address()
+            address = get_impl_address(address, trace_queue[i].item.dict())
+            if address not in abi_dict:
+                queue.add(Result(key=k, item=None))
+                continue
+
+            item = trans_queue[i].item.dict()
+            res = self.parse_input(item.get('input'), ABI().map({
+               'address': address,
+               'abi': abi_dict.get(address)
+            }))
+            if res is None:
+                queue.add(Result(key=k, item=None))
             else:
-                address = rcpt_queue[i].item.get_contract_address()
-                address = get_impl_address(address, trace_queue[i].item.dict())
-                if address not in abi_dict:
-                    queue.add(Result(key=k, item=None))
-                else:
-                    item = trans_queue[i].item.dict()
-                    function_signature = item['input'][:10]
-                    input = {'func': '', 'args': {}}
-                    if len(function_signature) == 10:
-                        contract = self.w3.eth.contract(
-                            self.w3.to_checksum_address(address),
-                            abi=abi_dict[address]
-                        )
-
-                        try:
-                            function = contract.get_function_by_selector(function_signature)
-
-                            function_abi_entry = next(
-                                (
-                                    abi for abi in contract.abi if
-                                    abi['type'] == 'function' and abi.get('name') == function.function_identifier
-                                ), None)
-                        except:
-                            queue.add(Result(key=k, item=None))
-                            continue
-
-                        if function_abi_entry:
-                            decoded_input = contract.decode_function_input(item['input'])
-
-                            args, formal_params = {}, []
-                            for param in function_abi_entry['inputs']:
-                                param_name, param_type = param['name'], param['type']
-                                param_value = decoded_input[1].get(param_name, None)
-
-                                formal_params.append(f"{param_type} {param_name}")
-                                if isinstance(param_value, bytes):
-                                    args[param_name] = '0x' + param_value.hex().lstrip('0')
-                                else:
-                                    args[param_name] = param_value
-
-                            input["func"] = f"{function.function_identifier}({','.join(formal_params)})"
-                            input["args"] = parse_hexbytes_dict(dict(args))
-                    queue.add(Result(
-                        key=k,
-                        item=Input().map({
-                            'hash': k,
-                            'func': input["func"],
-                            'args': input["args"]
-                        })
-                    ))
+                queue.add(Result(
+                    key=k,
+                    item=Input().map({
+                        'hash': k,
+                        'func': res["func"],
+                        'args': res["args"]
+                    })
+                ))
         return queue
 
 
