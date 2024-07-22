@@ -9,14 +9,20 @@ import ijson
 class Dao:
     def __init__(self, fpath: str):
         self.fpath = fpath
-        self._id = '{}-{}'.format(
-            self.__class__.__qualname__,
-            fpath
-        )
+        self._id = '{}-{}'.format(self.__class__.__qualname__, fpath)
 
     @property
     def id(self):
         return self._id
+
+    def create(self) -> bool:
+        raise NotImplementedError()
+
+    def insert(self, data: dict) -> bool:
+        raise NotImplementedError()
+
+    def load(self, batch_size: int = 1024) -> Generator[List[dict], None, None]:
+        raise NotImplementedError()
 
     def exist(self) -> bool:
         return os.path.isfile(self.fpath)
@@ -29,15 +35,6 @@ class Dao:
             print(f"Error: {e}")
             return False
         return True
-
-    def create(self) -> bool:
-        raise NotImplementedError()
-
-    def insert(self, data: dict) -> bool:
-        raise NotImplementedError()
-
-    def load(self, batch_size: int = 1024) -> Generator[List[dict], None, None]:
-        raise NotImplementedError()
 
 
 class JsonDao(Dao):
