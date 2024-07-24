@@ -385,7 +385,7 @@ class TimestampParser(Parser):
                     item=None
                 ))
             else:
-                trans = trans_dict.get(k).item.dict()
+                trans = trans_dict.get(k).dict()
                 queue.add(Result(
                     key=k,
                     item=Timestamp().map({
