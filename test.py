@@ -1,27 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """       
-@File   : crawl.py
+@File   : test.py
 @Time   : 2024/7/11 16:31
 @Author : zzYe
 
 """
 import asyncio
 import csv
-import os
-import shutil
-from queue import Queue
-from typing import List
 
 from tqdm import tqdm
 
-from dao.meta import JsonDao
-from item.evm.tx import Trace
-from spider.evm.ps import SubgraphParser, InputParser, EventLogParser, TimestampParser, CompleteFormParser
-from spider.evm.tx import TransactionSpider
-from spider.meta import Parser
+from spider.evm.ps import CompleteFormParser
 from utils.conf import Vm, Net, Module, Mode
-from utils.pc import PC, Job
 
 
 async def main():
@@ -57,6 +48,7 @@ async def main():
 
 
 asyncio.get_event_loop().run_until_complete(main())
+
 
 #
 # # 指定要检查的文件夹路径
