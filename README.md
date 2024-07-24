@@ -57,10 +57,12 @@ URL_DICT = {
 Command your desires into data from the command line. For example:
 
 ```
-python main.py -v evm -n eth -m tx -mode trace -hash 0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8 -o out
+python main.py -v evm -n eth -m tx -mode trans -hash 0x2f13d202c301c8c1787469310a2671c8b57837eb7a8a768df857cbc7b3ea32d8 -o out
 ```
 
-Here you can use --help to view the meaning of all command arguments:
+After running the above command, you will receive the data in the specified `out` directory, 
+defaulting to the `out` folder in the current path.
+And here you can use --help to view the meaning of all command arguments:
 
 ```
 usage: main.py [-h] [-v {evm}] [-n {eth,bsc,pol}] [-m {tx,blk,sc,ps}]
