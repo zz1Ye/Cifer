@@ -179,4 +179,3 @@ class Parser(Meta):
 
     async def parse(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
         raise NotImplementedError()
-

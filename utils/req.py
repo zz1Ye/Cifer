@@ -1,17 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : req.py
-@Time   : 2024/7/9 15:57
-@Author : zzYe
-
-"""
 import random
 from enum import Enum
+from urllib.parse import urlencode, urljoin
 
 from pydantic import BaseModel
-
-from urllib.parse import urlencode, urljoin
 
 
 class Method(Enum):

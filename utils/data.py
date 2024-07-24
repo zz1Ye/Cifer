@@ -1,13 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : data.py
-@Time   : 2024/7/18 15:19
-@Author : zzYe
-
-"""
-
-
 def snake_to_camel(snake: str):
     if snake is None or snake == "":
         return

@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : ps.py
-@Time   : 2024/7/18 12:15
-@Author : zzYe
-
-"""
 import asyncio
 import logging
 import warnings
@@ -384,16 +376,17 @@ class TimestampParser(Parser):
                     key=k,
                     item=None
                 ))
-            else:
-                trans = trans_dict.get(k).dict()
-                queue.add(Result(
-                    key=k,
-                    item=Timestamp().map({
-                        'hash': k,
-                        'timestamp': block_dict.get(trans.get('block_hash')),
-                        'block_number': trans.get('block_number')
-                    })
-                ))
+                continue
+
+            trans = trans_dict.get(k).dict()
+            queue.add(Result(
+                key=k,
+                item=Timestamp().map({
+                    'hash': k,
+                    'timestamp': block_dict.get(trans.get('block_hash')),
+                    'block_number': trans.get('block_number')
+                })
+            ))
         return queue
 
 

@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : web3.py
-@Time   : 2024/7/11 11:52
-@Author : zzYe
-
-"""
 from typing import Dict, Any, Union, List
 
 from hexbytes import HexBytes

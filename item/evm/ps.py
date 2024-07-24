@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""       
-@File   : ps.py
-@Time   : 2024/7/16 11:44
-@Author : zzYe
-
-"""
 from typing import List
 
 from pydantic import Field
