@@ -105,8 +105,9 @@ class TraceElement(Item):
     def map(self, source: dict):
         action = TraceAction()
         result = TraceResult()
-        action.map(source.get('action') if 'action' in source else {})
-        result.map(source.get('result') if 'result' in source else {})
+
+        action.map(source.get('action', {}) if 'action' in source else {})
+        result.map(source.get('result', {}) if 'result' in source else {})
 
         self.action = action
         self.block_hash = source.get('blockHash')
@@ -141,9 +142,8 @@ class Trace(Item):
     @check_source
     def map(self, source: dict):
         array = []
-        for e in source.get('array'):
-            element = TraceElement()
-            element.map(e)
+        for e in source.get('array', []):
+            element = TraceElement().map(e)
             array.append(element)
         self.array = array
         return self

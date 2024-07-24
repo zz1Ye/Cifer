@@ -1,7 +1,12 @@
+from queue import Queue
+from typing import List
+
+from dao.meta import JsonDao
 from item.evm.tx import Transaction, Trace, Receipt
 from settings import HEADER
-from spider.meta import Spider, Result
+from spider.meta import Spider, Result, save_item, load_exists_item, preprocess_keys, ResultQueue
 from utils.conf import Net, Vm, Module, Mode
+from utils.pc import PC, Job
 from utils.req import Request, Headers
 
 
@@ -29,11 +34,37 @@ class TransactionSpider(Spider):
             payload=payload
         )
         res = await self.fetch(req)
-        return Result(
-            key=hash,
-            item={
-                Mode.TRANS: Transaction().map(res),
-                Mode.TRACE: Trace().map({'array': res}),
-                Mode.RCPT: Receipt().map(res)
-            }.get(mode) if res is not None else None
-        )
+        try:
+            return Result(
+                key=hash,
+                item={
+                    Mode.TRANS: Transaction().map(res),
+                    Mode.TRACE: Trace().map({'array': res}),
+                    Mode.RCPT: Receipt().map(res)
+                }.get(mode) if res is not None else None
+            )
+        except:
+            print(mode.value, res)
+            Trace().map({'array': res})
+            exit(0)
+
+
+    @save_item
+    @load_exists_item
+    @preprocess_keys
+    async def crawl(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
+        source = Queue()
+        for hash in keys:
+            source.put(
+                Job(
+                    spider=self,
+                    params={'mode': mode, 'key': hash},
+                    dao=JsonDao(self.dir_path(out, hash, mode))
+                )
+            )
+        pc = PC(source)
+        await pc.run()
+        queue = ResultQueue()
+        while pc.fi_q.qsize() != 0:
+            queue.add(pc.fi_q.get())
+        return queue

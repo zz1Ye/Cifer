@@ -1,6 +1,5 @@
 import json
 from functools import wraps
-from queue import Queue
 from typing import List
 
 import aiohttp
@@ -10,7 +9,6 @@ from dao.meta import JsonDao
 from item.meta import Item
 from settings import URL, RPC
 from utils.conf import Net, Vm, Module, Mode
-from utils.pc import Job, PC
 from utils.req import RPCNode
 
 
@@ -89,7 +87,7 @@ def load_exists_item(func):
             item_dict[k] = Result(key=k, item=mode.new_mapping_item().map(item))
 
         for e in await func(self, list(n_keys), mode, out):
-            item_dict[e.get("key")] = e
+            item_dict[e.key] = e
 
         return ResultQueue(queue=[item_dict[k] for k in keys])
     return wrapper
@@ -149,26 +147,6 @@ class Spider(Meta):
     async def get(self, **kwargs) -> Result:
         raise NotImplementedError()
 
-    @save_item
-    @load_exists_item
-    @preprocess_keys
-    async def crawl(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
-        source = Queue()
-        for hash in keys:
-            source.put(
-                Job(
-                    spider=self,
-                    params={'mode': mode, 'key': hash},
-                    dao=JsonDao(self.dir_path(out, hash, mode))
-                )
-            )
-        pc = PC(source)
-        await pc.run()
-        queue = ResultQueue()
-        while pc.fi_q.qsize() != 0:
-            queue.add(pc.fi_q.get())
-        return queue
-
     @staticmethod
     async def fetch(req, retries: int = 3):
         req = req.dict()
@@ -192,7 +170,6 @@ class Spider(Meta):
                     content = await response.json()
             else:
                 raise ValueError()
-
         return content.get("result", None)
 
 

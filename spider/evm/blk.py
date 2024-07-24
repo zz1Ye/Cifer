@@ -1,7 +1,12 @@
+from queue import Queue
+from typing import List
+
+from dao.meta import JsonDao
 from item.evm.blk import Block
 from settings import HEADER
-from spider.meta import Spider, Result
+from spider.meta import Spider, Result, save_item, load_exists_item, preprocess_keys, ResultQueue
 from utils.conf import Vm, Net, Module, Mode
+from utils.pc import Job, PC
 from utils.req import Request, Headers
 
 
@@ -36,3 +41,23 @@ class BlockSpider(Spider):
                 Mode.BLOCK: Block().map(res)
             }.get(mode) if res is not None else None
         )
+
+    @save_item
+    @load_exists_item
+    @preprocess_keys
+    async def crawl(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
+        source = Queue()
+        for hash in keys:
+            source.put(
+                Job(
+                    spider=self,
+                    params={'mode': mode, 'key': hash},
+                    dao=JsonDao(self.dir_path(out, hash, mode))
+                )
+            )
+        pc = PC(source)
+        await pc.run()
+        queue = ResultQueue()
+        while pc.fi_q.qsize() != 0:
+            queue.add(pc.fi_q.get())
+        return queue

@@ -17,7 +17,7 @@ def check_source(func):
     @wraps(func)
     def wrapper(self, source):
         if source is None or not isinstance(source, dict):
-            return None
+            source = {}
         return func(self, source)
     return wrapper
 
@@ -27,7 +27,6 @@ def snake_to_camel(func):
     def wrapper(self, source):
         source = snake_keys_to_camel(source)
         return func(self, source)
-
     return wrapper
 
 

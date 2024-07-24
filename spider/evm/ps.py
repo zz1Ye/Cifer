@@ -60,6 +60,7 @@ class CompleteFormParser(Parser):
             asyncio.create_task(self.sg_parser.parse(keys, Mode.SG, out)),
             asyncio.create_task(self.ts_parser.parse(keys, Mode.TS, out)),
         ]
+        await asyncio.gather(*tasks)
         trans_q, el_q, in_q, sg_q, ts_q = await asyncio.gather(*tasks)
 
         common_idxs = set(range(len(keys)))
@@ -181,10 +182,11 @@ class EventLogParser(Parser):
         for q in [trace_queue, rcpt_queue]:
             common_idxs &= set(q.get_non_none_idx())
         addresses = [
-            get_impl_address(a, trace_queue[i])
+            get_impl_address(a, trace_queue[i].item.dict())
             for i in common_idxs
             for a in [rcpt_queue[i].item.get_contract_address()] +
-                     [rcpt_queue[i].item.get_event_sources()]
+                     [e for e in rcpt_queue[i].item.get_event_sources()]
+            if a != "None" and a is not None
         ]
 
         abi_queue = await self.sc_spider.crawl(list(set(addresses)), Mode.ABI, out)
@@ -269,7 +271,8 @@ class InputParser(Parser):
         addresses = []
         for i in common_idxs:
             address = rcpt_queue[i].item.get_contract_address()
-            addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
+            if address != "None" and address is not None:
+                addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
         abi_queue = await self.sc_spider.crawl(addresses, Mode.ABI, out)
         abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
 
@@ -327,8 +330,8 @@ class SubgraphParser(Parser):
                 paths = []
                 trans = trans_queue[i].item.dict()
                 paths.append({
-                    'from': trans.get('item').get('from_'),
-                    'to': trans.get('item').get('to_'),
+                    'from': trans.get('from_'),
+                    'to': trans.get('to_'),
                 })
                 trace = trace_queue[i].item.dict()
                 paths = paths + [
@@ -336,7 +339,7 @@ class SubgraphParser(Parser):
                         'from': t.get('action').get('from_'),
                         'to': t.get('action').get('to_'),
                     }
-                    for t in trace.get('item')['array']
+                    for t in trace['array']
                 ]
                 queue.add(Result(
                     key=k,

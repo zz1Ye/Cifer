@@ -93,7 +93,7 @@ class PC:
             job = await self.ru_q.get()
             await job.run()
             assert job.status == Status.FINISHED
-            self.fi_q.put(job)
+            self.fi_q.put(job.res)
             self._count += 1
 
             if self._count % 1000 == 0:

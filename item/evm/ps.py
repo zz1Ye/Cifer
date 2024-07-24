@@ -66,7 +66,7 @@ class EventLogs(Item):
     @check_source
     def map(self, source: dict):
         array = []
-        for e in source.get('array'):
+        for e in source.get('array', []):
             element = EventLog()
             element.map(e)
             array.append(element)
@@ -95,9 +95,13 @@ class Subgraph(Item):
     @check_source
     def map(self, source: dict):
         self.hash = source.get('hash')
+        if 'edges' in source and 'nodes' in source:
+            self.edges = source.get('edges')
+            self.nodes = source.get('nodes')
+            return self
 
         nodes, edges = set(), []
-        for p in source.get('paths'):
+        for p in source.get('paths', []):
             if not (p.get('from') in nodes and p.get('to') in nodes):
                 edges.append(p)
             nodes.add(p.get('from'))
