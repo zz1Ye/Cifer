@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from spider.evm.blk import BlockSpider
 from spider.evm.ps import TimestampParser, SubgraphParser, InputParser, EventLogParser, CompleteFormParser
-from spider.evm.sc import ContractSpider
+from spider.evm.ac import ContractSpider
 from spider.evm.tx import TransactionSpider
 from spider.meta import Spider
 from utils.conf import Vm, Net, Module, Mode

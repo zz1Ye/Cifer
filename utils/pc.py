@@ -22,7 +22,7 @@ class Job:
     ):
         self.spider = spider
         self.params = params
-        self.res = Result(key=params.get("key"), item=None)
+        self.res = Result(key=params.get("id"), item=None)
         self.dao = dao
 
         self._status = Status.READY

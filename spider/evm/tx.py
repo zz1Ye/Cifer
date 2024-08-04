@@ -34,20 +34,14 @@ class TransactionSpider(Spider):
             payload=payload
         )
         res = await self.fetch(req)
-        try:
-            return Result(
-                key=hash,
-                item={
-                    Mode.TRANS: Transaction().map(res),
-                    Mode.TRACE: Trace().map({'array': res}),
-                    Mode.RCPT: Receipt().map(res)
-                }.get(mode) if res is not None else None
-            )
-        except:
-            print(mode.value, res)
-            Trace().map({'array': res})
-            exit(0)
-
+        return Result(
+            key=hash,
+            item={
+                Mode.TRANS: Transaction().map(res),
+                Mode.TRACE: Trace().map({'array': res}),
+                Mode.RCPT: Receipt().map(res)
+            }.get(mode) if res is not None else None
+        )
 
     @save_item
     @load_exists_item
@@ -58,7 +52,7 @@ class TransactionSpider(Spider):
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode, 'key': hash},
+                    params={'mode': mode, 'key': hash, 'id': hash},
                     dao=JsonDao(self.dir_path(out, hash, mode))
                 )
             )

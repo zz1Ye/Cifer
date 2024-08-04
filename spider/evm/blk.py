@@ -51,7 +51,7 @@ class BlockSpider(Spider):
             source.put(
                 Job(
                     spider=self,
-                    params={'mode': mode, 'key': hash},
+                    params={'mode': mode, 'key': hash, 'id': hash},
                     dao=JsonDao(self.dir_path(out, hash, mode))
                 )
             )

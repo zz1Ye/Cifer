@@ -2,7 +2,7 @@ from enum import Enum
 
 from item.evm.blk import Block
 from item.evm.ps import Timestamp, Subgraph, Input, EventLog, CompleteForm
-from item.evm.sc import ABI
+from item.evm.ac import ABI, TxList
 from item.evm.tx import Transaction, Trace, Receipt
 
 
@@ -19,14 +19,14 @@ class Net(Enum):
 class Module(Enum):
     TX = "tx"
     BLK = "blk"
-    SC = "sc"
+    AC = "ac"
     PS = 'ps'
 
     def allowed_modes(self):
         return {
             Module.TX: {Mode.TRANS, Mode.TRACE, Mode.RCPT},
             Module.BLK: {Mode.BLOCK},
-            Module.SC: {Mode.ABI},
+            Module.AC: {Mode.ABI, Mode.TXLIST},
             Module.PS: {Mode.TS, Mode.SG, Mode.IN, Mode.EL, Mode.CF}
         }.get(self)
 
@@ -42,6 +42,7 @@ class Mode(Enum):
     RCPT = 'rcpt'
     BLOCK = 'block'
     ABI = 'abi'
+    TXLIST = 'txlist'
 
     def new_mapping_item(self):
         return {
@@ -50,6 +51,7 @@ class Mode(Enum):
             Mode.RCPT: Receipt(),
             Mode.BLOCK: Block(),
             Mode.ABI: ABI(),
+            Mode.TXLIST: TxList(),
             Mode.TS: Timestamp(),
             Mode.SG: Subgraph(),
             Mode.IN: Input(),

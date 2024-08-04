@@ -7,9 +7,9 @@ from hexbytes import HexBytes
 from web3 import Web3
 
 from item.evm.ps import Timestamp, Subgraph, Input, EventLog, EventLogs, CompleteForm
-from item.evm.sc import ABI
+from item.evm.ac import ABI
 from spider.evm.blk import BlockSpider
-from spider.evm.sc import ContractSpider
+from spider.evm.ac import ContractSpider
 from spider.evm.tx import TransactionSpider
 from spider.meta import Parser, preprocess_keys, save_item, load_exists_item, ResultQueue, Result
 from utils.conf import Vm, Net, Module, Mode
@@ -341,6 +341,11 @@ class SubgraphParser(Parser):
                     })
                 ))
         return queue
+
+
+class FundsFlowSubgraph(Parser):
+    def __init__(self, vm: Vm, net: Net, module: Module):
+        super().__init__(vm, net, module)
 
 
 class TimestampParser(Parser):
