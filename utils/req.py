@@ -1,5 +1,6 @@
 import random
 from enum import Enum
+from typing import List
 from urllib.parse import urlencode, urljoin
 
 from pydantic import BaseModel
@@ -59,3 +60,54 @@ class Request(BaseModel):
 def get_random_user_agent(user_agents):
     return random.choice(user_agents)
 
+
+class Result:
+    def __init__(self, key, item: dict):
+        self.key = key
+        self.item = item
+
+
+class ResultQueue:
+    def __init__(self, queue: List[Result] = None):
+        if queue is None:
+            queue = []
+        self.queue = queue
+        self.index = 0
+
+    def __iter__(self):
+        self.index = 0
+        return self
+
+    def __next__(self):
+        if self.index < len(self.queue):
+            result = self.queue[self.index]
+            self.index += 1
+            return result
+        else:
+            raise StopIteration
+
+    def __getitem__(self, index):
+        return self.queue[index]
+
+    def __setitem__(self, index, value):
+        self.queue[index] = value
+
+    def __len__(self):
+        return len(self.queue)
+
+    def add(self, element: Result):
+        self.queue.append(element)
+
+    def get_none_idx(self):
+        return [
+            i
+            for i, e in enumerate(self.queue)
+            if e.item is None
+        ]
+
+    def get_non_none_idx(self):
+        return [
+            i
+            for i, e in enumerate(self.queue)
+            if e.item is not None
+        ]

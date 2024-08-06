@@ -1,7 +1,7 @@
 from enum import Enum
 
 from item.evm.blk import Block
-from item.evm.ps import Timestamp, Subgraph, Input, EventLog, CompleteForm
+from item.evm.ps import Timestamp, Subgraph, Input, EventLog, CompleteForm, FundsFlowSubgraph
 from item.evm.ac import ABI, TxList
 from item.evm.tx import Transaction, Trace, Receipt
 
@@ -27,7 +27,7 @@ class Module(Enum):
             Module.TX: {Mode.TRANS, Mode.TRACE, Mode.RCPT},
             Module.BLK: {Mode.BLOCK},
             Module.AC: {Mode.ABI, Mode.TXLIST},
-            Module.PS: {Mode.TS, Mode.SG, Mode.IN, Mode.EL, Mode.CF}
+            Module.PS: {Mode.TS, Mode.SG, Mode.IN, Mode.EL, Mode.CF, Mode.FFS}
         }.get(self)
 
 
@@ -43,6 +43,7 @@ class Mode(Enum):
     BLOCK = 'block'
     ABI = 'abi'
     TXLIST = 'txlist'
+    FFS = 'ffs'
 
     def new_mapping_item(self):
         return {
@@ -56,7 +57,8 @@ class Mode(Enum):
             Mode.SG: Subgraph(),
             Mode.IN: Input(),
             Mode.EL: EventLog(),
-            Mode.CF: CompleteForm()
+            Mode.CF: CompleteForm(),
+            Mode.FFS: FundsFlowSubgraph()
         }.get(self)
 
     @staticmethod

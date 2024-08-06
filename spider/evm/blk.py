@@ -6,7 +6,7 @@ from item.evm.blk import Block
 from settings import HEADER
 from spider.meta import Spider, Result, save_item, load_exists_item, preprocess_keys, ResultQueue
 from utils.conf import Vm, Net, Module, Mode
-from utils.pc import Job, PC
+from spider.pc import Job, PC
 from utils.req import Request, Headers
 
 

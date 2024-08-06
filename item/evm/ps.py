@@ -106,3 +106,41 @@ class Subgraph(Item):
     hash: str = Field(default='')
     edges: list = Field(default=[])
     nodes: list = Field(default=[])
+
+
+class FundsFlowSubgraph(Item):
+    class _Node(Item):
+        @snake_to_camel
+        @check_source
+        def map(self, source: dict):
+            self.nid = source.get('nid')
+            return self
+        nid: str = Field(default='')
+
+    class _Edge(Item):
+        @snake_to_camel
+        @check_source
+        def map(self, source: dict):
+            self.from_ = source.get('from')
+            self.to_ = source.get('to')
+            self.attributes = source.get('attributes')
+            return self
+
+        from_: str = Field(default='')
+        to_: str = Field(default='')
+        attributes: dict = Field(default={})
+
+    @snake_to_camel
+    @check_source
+    def map(self, source: dict):
+        self.hash = source.get('hash')
+        self.edges = [
+            self._Edge().map(e)
+            for e in source.get('edges', [])
+        ]
+        self.nodes = [self._Node().map({'nid': _id}) for _id in source.get('nodes', [])]
+        return self
+
+    hash: str = Field(default='')
+    edges: list = Field(default=[])
+    nodes: list = Field(default=[])
