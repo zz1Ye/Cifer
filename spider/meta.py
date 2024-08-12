@@ -221,7 +221,10 @@ class Job:
         self.status = Status.RUNNING
         try:
             self.res = await self.spider.parse(**self.param)
-        except (NotImplementedError, ValueError) as e:
+        except (
+            NotImplementedError, ValueError, asyncio.exceptions.TimeoutError,
+            aiohttp.client_exceptions.ClientPayloadError
+        ) as e:
             logging.error(e)
         self.status = Status.FINISHED
 

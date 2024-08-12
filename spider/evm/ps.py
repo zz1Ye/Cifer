@@ -48,7 +48,7 @@ class FundsFlowSubgraphSpider(Spider):
             return Result(key=key, item={})
 
         nodes, edges = [], []
-        for e in from_res.item.get('array') + to_res.item.get('array'):
+        for e in from_res.item.get('array', []) + to_res.item.get('array', []):
             if e.get('hash', '').lower() != hash.lower():
                 continue
 
@@ -70,8 +70,6 @@ class FundsFlowSubgraphSpider(Spider):
                 'nodes': list(set(nodes))
             }).dict()
         )
-
-
 
 
 # def get_impl_address(address: str, trace: dict):

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sys
 from typing import Generator, List
@@ -9,11 +10,6 @@ import ijson
 class Dao:
     def __init__(self, fpath: str):
         self.fpath = fpath
-        self._id = '{}-{}'.format(self.__class__.__qualname__, fpath)
-
-    @property
-    def id(self):
-        return self._id
 
     def create(self) -> bool:
         raise NotImplementedError()
@@ -29,10 +25,9 @@ class Dao:
 
     def drop(self) -> bool:
         try:
-            if os.path.exists(self.fpath):
-                os.remove(self.fpath)
-        except (PermissionError, OSError) as e:
-            print(f"Error: {e}")
+            os.remove(self.fpath)
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            logging.error(e)
             return False
         return True
 
@@ -48,7 +43,7 @@ class JsonDao(Dao):
                 pass
 
         except Exception as e:
-            print(f"Error creating file: {e}")
+            logging.error(e)
             return False
 
         return True
