@@ -1,13 +1,16 @@
+import asyncio
 import logging
 import warnings
 
 from hexbytes import HexBytes
 from web3 import Web3
 
-from item.evm.ps import FundsFlowSubgraph
+from item.evm.ac import ABI
+from item.evm.ps import FundsFlowSubgraph, Timestamp, Input
 from settings import HEADER
-from spider.evm.ac import TxListSpider
-from spider.evm.tx import TransactionSpider
+from spider.evm.ac import TxListSpider, ABISpider
+from spider.evm.blk import BlockSpider
+from spider.evm.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from spider.meta import Spider
 from utils.conf import Vm, Net, Module, Mode
 from utils.req import Request, Headers, Result
@@ -70,6 +73,140 @@ class FundsFlowSubgraphSpider(Spider):
                 'nodes': list(set(nodes))
             }).dict()
         )
+
+
+class TimestampParser(Spider):
+    def __init__(self, vm: Vm, net: Net):
+        super().__init__(vm, net, Module.PS, Mode.TS)
+        self.blk_spider = BlockSpider(vm, net)
+        self.trans_spider = TransactionSpider(vm, net)
+
+    async def parse(self, **kwargs):
+        key = kwargs.get("id")
+        hash = kwargs.get("hash")
+        out = kwargs.get("out")
+
+        trans_queue = await self.trans_spider.crawl(params=[{
+            'hash': hash,
+            'out': out
+        }])
+        trans = trans_queue[0]
+        if len(trans.item) == 0:
+            return Result(key=key, item={})
+
+        blk_hash_arr = trans.item.dict().get("block_hash")
+        block_queue = await self.blk_spider.crawl(list(blk_hash_arr), Mode.BLOCK, out)
+        block = block_queue[0]
+        if len(block.item) == 0:
+            return Result(key=key, item={})
+
+        return Result(
+            key=key, item=Timestamp().map({
+                'hash': hash,
+                'timestamp': block.get('timestamp'),
+                'block_number': trans.get('block_number')
+            }).dict()
+        )
+
+
+class InputParser(Spider):
+    def __init__(self, vm: Vm, net: Net):
+        super().__init__(vm, net, Module.PS, Mode.IN)
+        self.w3 = Web3(Web3.HTTPProvider(
+            self.provider.get()
+        ))
+        self.trans_spider = TransactionSpider(vm, net)
+        self.trace_spider = TraceSpider(vm, net)
+        self.rcpt_spider = ReceiptSpider(vm, net)
+        self.abi_spider = ABISpider(vm, net)
+
+    def parse_input(self, input: str, abi: ABI):
+        if len(input[:10]) != 10:
+            return None
+
+        try:
+            contract = self.w3.eth.contract(
+                self.w3.to_checksum_address(abi.address),
+                abi=abi.abi
+            )
+            func = contract.get_function_by_selector(input[:10])
+            func_id = func.function_identifier
+            func_entry = next((
+                abi for abi in contract.abi if
+                abi['type'] == 'function' and abi.get('name') == func_id
+            ), None)
+            if not func_entry:
+                return None
+            decoded_input = contract.decode_function_input(input)
+            args = {
+                param['name']: decoded_input[1].get(param['name'], None)
+                for param in func_entry['inputs']
+            }
+            formal_params = ','.join([
+                f"{param['type']} {param['name']}"
+                for param in func_entry['inputs']
+            ])
+            return {
+                'func': f"{func_id}({','.join(formal_params)})",
+                'args': parse_hexbytes_dict(dict({
+                    k: '0x' + v.hex().lstrip('0')
+                    if isinstance(v, bytes) else v
+                    for k, v in args.items()
+                }))
+
+            }
+        except Exception as e:
+            logging.error(e)
+            return None
+
+    async def parse(self, **kwargs):
+        key = kwargs.get("id")
+        hash = kwargs.get("hash")
+        out = kwargs.get("out")
+
+        tasks = [
+            asyncio.create_task(self.trans_spider.crawl(params=[{'hash': hash, 'out': out}])),
+            asyncio.create_task(self.trace_spider.crawl(params=[{'hash': hash, 'out': out}])),
+            asyncio.create_task(self.rcpt_spider.crawl(params=[{'hash': hash, 'out': out}]))
+        ]
+        trans_queue, trace_queue, rcpt_queue = await asyncio.gather(*tasks)
+        trans, trace, rcpt = trans_queue[0], trace_queue[0], rcpt_queue[0]
+
+        if len(trans.item) == 0 or len(trace.item) == 0 or len(rcpt.item) == 0:
+            return Result(key=key, item={})
+
+        address = rcpt.item.get_contract_address()
+        if address != "None" and address is not None:
+            addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
+        abi_queue = await self.sc_spider.crawl(addresses, Mode.ABI, out)
+        abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
+
+        queue = ResultQueue()
+        for i, k in enumerate(keys):
+            if i not in common_idxs:
+                queue.add(Result(key=k, item=None))
+                continue
+
+            address = rcpt_queue[i].item.get_contract_address()
+            address = get_impl_address(address, trace_queue[i].item.dict())
+            if address not in abi_dict:
+                queue.add(Result(key=k, item=None))
+                continue
+
+            item = trans_queue[i].item.dict()
+            res = self.parse_input(item.get('input'), ABI().map({
+               'address': address,
+               'abi': abi_dict.get(address)
+            }))
+            if res is None:
+                queue.add(Result(key=k, item=None))
+            else:
+                queue.add(Result(key=k, item=Input().map({
+                    'hash': k,
+                    'func': res["func"],
+                    'args': res["args"]
+                })))
+        return queue
 
 
 # def get_impl_address(address: str, trace: dict):
@@ -253,103 +390,7 @@ class FundsFlowSubgraphSpider(Spider):
 #         return queue
 #
 #
-# class InputParser(Parser):
-#     def __init__(self, vm: Vm, net: Net, module: Module):
-#         super().__init__(vm, net, module)
-#         self.w3 = Web3(Web3.HTTPProvider(
-#             self.provider.get()
-#         ))
-#         self.tx_spider = TransactionSpider(vm, net, Module.TX)
-#         self.sc_spider = ContractSpider(vm, net, Module.SC)
-#
-#     def parse_input(self, input: str, abi: ABI):
-#         if len(input[:10]) != 10:
-#             return None
-#
-#         try:
-#             contract = self.w3.eth.contract(
-#                 self.w3.to_checksum_address(abi.address),
-#                 abi=abi.abi
-#             )
-#             func = contract.get_function_by_selector(input[:10])
-#             func_id = func.function_identifier
-#             func_entry = next((
-#                 abi for abi in contract.abi if
-#                 abi['type'] == 'function' and abi.get('name') == func_id
-#             ), None)
-#             if not func_entry:
-#                 return None
-#             decoded_input = contract.decode_function_input(input)
-#             args = {
-#                 param['name']: decoded_input[1].get(param['name'], None)
-#                 for param in func_entry['inputs']
-#             }
-#             formal_params = ','.join([
-#                 f"{param['type']} {param['name']}"
-#                 for param in func_entry['inputs']
-#             ])
-#             return {
-#                 'func': f"{func_id}({','.join(formal_params)})",
-#                 'args': parse_hexbytes_dict(dict({
-#                     k: '0x' + v.hex().lstrip('0')
-#                     if isinstance(v, bytes) else v
-#                     for k, v in args.items()
-#                 }))
-#
-#             }
-#         except Exception as e:
-#             logging.error(e)
-#             return None
-#
-#     @save_item
-#     @load_exists_item
-#     @preprocess_keys
-#     async def parse(self, keys: List[str], mode: str, out: str):
-#         tasks = [
-#             asyncio.create_task(self.tx_spider.crawl(keys, Mode.TRANS, out)),
-#             asyncio.create_task(self.tx_spider.crawl(keys, Mode.TRACE, out)),
-#             asyncio.create_task(self.tx_spider.crawl(keys, Mode.RCPT, out))
-#         ]
-#         trans_queue, trace_queue, rcpt_queue = await asyncio.gather(*tasks)
-#
-#         common_idxs = set(range(len(keys)))
-#         for q in [trans_queue, trace_queue, rcpt_queue]:
-#             common_idxs &= set(q.get_non_none_idx())
-#
-#         addresses = []
-#         for i in common_idxs:
-#             address = rcpt_queue[i].item.get_contract_address()
-#             if address != "None" and address is not None:
-#                 addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
-#         abi_queue = await self.sc_spider.crawl(addresses, Mode.ABI, out)
-#         abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
-#
-#         queue = ResultQueue()
-#         for i, k in enumerate(keys):
-#             if i not in common_idxs:
-#                 queue.add(Result(key=k, item=None))
-#                 continue
-#
-#             address = rcpt_queue[i].item.get_contract_address()
-#             address = get_impl_address(address, trace_queue[i].item.dict())
-#             if address not in abi_dict:
-#                 queue.add(Result(key=k, item=None))
-#                 continue
-#
-#             item = trans_queue[i].item.dict()
-#             res = self.parse_input(item.get('input'), ABI().map({
-#                'address': address,
-#                'abi': abi_dict.get(address)
-#             }))
-#             if res is None:
-#                 queue.add(Result(key=k, item=None))
-#             else:
-#                 queue.add(Result(key=k, item=Input().map({
-#                     'hash': k,
-#                     'func': res["func"],
-#                     'args': res["args"]
-#                 })))
-#         return queue
+
 #
 #
 # class SubgraphParser(Parser):
@@ -397,57 +438,6 @@ class FundsFlowSubgraphSpider(Spider):
 #                     })
 #                 ))
 #         return queue
-#
-#
-# class FundsFlowSubgraph(Parser):
-#     def __init__(self, vm: Vm, net: Net, module: Module):
-#         super().__init__(vm, net, module)
-#
-#
-# class TimestampParser(Parser):
-#     def __init__(self, vm: Vm, net: Net, module: Module):
-#         super().__init__(vm, net, module)
-#         self.blk_spider = BlockSpider(vm, net, Module.BLK)
-#         self.tx_spider = TransactionSpider(vm, net, Module.TX)
-#
-#     @save_item
-#     @load_exists_item
-#     @preprocess_keys
-#     async def parse(self, keys: List[str], mode: Mode, out: str) -> ResultQueue:
-#         trans_queue = await self.tx_spider.crawl(keys, Mode.TRANS, out)
-#
-#         trans_dict = {}
-#         blk_hash_arr = set()
-#         for e in trans_queue:
-#             trans_dict[e.key] = e.item
-#             if e.item is not None:
-#                 blk_hash_arr.add(e.item.dict().get("block_hash"))
-#
-#         block_queue = await self.blk_spider.crawl(list(blk_hash_arr), Mode.BLOCK, out)
-#         block_dict = {}
-#         for e in block_queue:
-#             item = e.item.dict()
-#             if item is not None:
-#                 block_dict[item.get('hash')] = item.get('timestamp')
-#
-#         queue = ResultQueue()
-#         for k in keys:
-#             if trans_dict.get(k) is None:
-#                 queue.add(Result(
-#                     key=k,
-#                     item=None
-#                 ))
-#                 continue
-#
-#             trans = trans_dict.get(k).dict()
-#             queue.add(Result(
-#                 key=k,
-#                 item=Timestamp().map({
-#                     'hash': k,
-#                     'timestamp': block_dict.get(trans.get('block_hash')),
-#                     'block_number': trans.get('block_number')
-#                 })
-#             ))
-#         return queue
+
 
 
