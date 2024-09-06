@@ -200,7 +200,7 @@ class ABISpider(Spider):
 
     async def parse(self, **kwargs):
         key = kwargs.get('id')
-        address = kwargs.get('key')
+        address = kwargs.get('address')
 
         params = {
             'module': self.rpc.get("params").get("module"),

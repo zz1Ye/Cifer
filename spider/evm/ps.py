@@ -109,6 +109,22 @@ class TimestampParser(Spider):
         )
 
 
+def get_impl_address(address: str, trace: dict):
+    trace_arr = trace.get('array', [])
+    try:
+        address = next(
+            t.get('action', {}).get('to_')
+            for t in trace_arr
+            if (
+                    t.get('action', {}).get('call_type').lower() == "delegatecall"
+                    and t.get('action', {}).get('from_').lower() == address.lower()
+            )
+        )
+    except (StopIteration, Exception):
+        pass
+    return address
+
+
 class InputParser(Spider):
     def __init__(self, vm: Vm, net: Net):
         super().__init__(vm, net, Module.PS, Mode.IN)
@@ -177,53 +193,26 @@ class InputParser(Spider):
 
         address = rcpt.item.get_contract_address()
         if address != "None" and address is not None:
-            addresses.append(get_impl_address(address, trace_queue[i].item.dict()))
-        abi_queue = await self.sc_spider.crawl(addresses, Mode.ABI, out)
-        abi_dict = {e.key: e.item.dict().get('abi') for e in abi_queue if e.item is not None}
+            address = get_impl_address(address, trace.item.dict())
+        abi_queue = await self.abi_spider.crawl(params=[{'address': address, 'out': out}])
+        if len(abi_queue[0].item) == 0:
+            return Result(key=key, item={})
+        abi = abi_queue[0].item.dict().get('abi')
 
-        queue = ResultQueue()
-        for i, k in enumerate(keys):
-            if i not in common_idxs:
-                queue.add(Result(key=k, item=None))
-                continue
+        res = self.parse_input(trans.item.dict().get('input'), ABI().map({
+           'address': address,
+           'abi': abi
+        }))
+        if res is None:
+            return Result(key=key, item={})
 
-            address = rcpt_queue[i].item.get_contract_address()
-            address = get_impl_address(address, trace_queue[i].item.dict())
-            if address not in abi_dict:
-                queue.add(Result(key=k, item=None))
-                continue
-
-            item = trans_queue[i].item.dict()
-            res = self.parse_input(item.get('input'), ABI().map({
-               'address': address,
-               'abi': abi_dict.get(address)
-            }))
-            if res is None:
-                queue.add(Result(key=k, item=None))
-            else:
-                queue.add(Result(key=k, item=Input().map({
-                    'hash': k,
-                    'func': res["func"],
-                    'args': res["args"]
-                })))
-        return queue
-
-
-# def get_impl_address(address: str, trace: dict):
-#     trace_arr = trace.get('array', [])
-#     try:
-#         address = next(
-#             t.get('action', {}).get('to_')
-#             for t in trace_arr
-#             if (
-#                     t.get('action', {}).get('call_type').lower() == "delegatecall"
-#                     and t.get('action', {}).get('from_').lower() == address.lower()
-#             )
-#         )
-#     except (StopIteration, Exception):
-#         pass
-#     return address
-#
+        return Result(
+            key=key, item=Input().map({
+                'hash': hash,
+                'func': res["func"],
+                'args': res["args"]
+            }).dict()
+        )
 #
 # class CompleteFormParser(Parser):
 #     def __init__(self, vm: Vm, net: Net, module: Module):

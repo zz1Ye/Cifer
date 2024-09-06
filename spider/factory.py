@@ -1,4 +1,4 @@
-from spider.evm.ps import FundsFlowSubgraphSpider, TimestampParser
+from spider.evm.ps import FundsFlowSubgraphSpider, TimestampParser, InputParser
 from spider.meta import Spider
 from spider.evm.tx import TransactionSpider
 from utils.conf import Vm, Net, Module, Mode
@@ -16,7 +16,7 @@ class Factory:
             # Mode.ABI: ContractSpider(vm, net, module),
             Mode.TS: TimestampParser(vm, net),
             # Mode.SG: SubgraphParser(vm, net, module),
-            # Mode.IN: InputParser(vm, net, module),
+            Mode.IN: InputParser(vm, net),
             # Mode.EL: EventLogParser(vm, net, module),
             # Mode.CF: CompleteFormParser(vm, net, module),
         }[mode]
