@@ -89,6 +89,7 @@ def save_item(func):
 
 class Spider:
     def __init__(self, vm: Vm, net: Net, module: Module, mode: Mode):
+        super().__init__()
         self.vm, self.net = vm, net
         self.module, self.mode = module, mode
         url_dict = URL.get(self.vm.value, {}).get(self.net.value, {})
@@ -160,6 +161,8 @@ class Spider:
     # async def get(self, **kwargs) -> Result:
     #     raise NotImplementedError()
 
+
+
 # class Meta:
 #     def __init__(self, vm: Vm, net: Net, module: Module):
 #         self.vm = vm
@@ -222,7 +225,7 @@ class Job:
         try:
             self.res = await self.spider.parse(**self.param)
         except Exception as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
         # except (
         #     NotImplementedError, ValueError, asyncio.exceptions.TimeoutError,
         #     aiohttp.client_exceptions.ClientPayloadError,

@@ -284,7 +284,7 @@ class TxListSpider(Spider):
                 'Max rate limit reached'
             ] else []
         except TypeError as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
             return []
 
     async def get_internal_txs(self, address: str, **kwargs) -> list:
@@ -316,7 +316,7 @@ class TxListSpider(Spider):
                 'Max rate limit reached'
             ] else []
         except TypeError as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
             return []
 
     async def get_erc20_txs(self, address: str, **kwargs) -> list:
@@ -348,7 +348,7 @@ class TxListSpider(Spider):
                 'Max rate limit reached'
             ] else []
         except TypeError as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
             return []
 
     async def get_erc721_txs(self, address: str, **kwargs) -> list:
@@ -380,7 +380,7 @@ class TxListSpider(Spider):
                 'Max rate limit reached'
             ] else []
         except TypeError as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
             return []
 
 

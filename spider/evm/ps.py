@@ -7,6 +7,7 @@ from web3 import Web3
 
 from item.evm.ac import ABI
 from item.evm.ps import FundsFlowSubgraph, Timestamp, Input
+from item.evm.tx import Receipt
 from settings import HEADER
 from spider.evm.ac import TxListSpider, ABISpider
 from spider.evm.blk import BlockSpider
@@ -71,7 +72,7 @@ class FundsFlowSubgraphSpider(Spider):
                 'hash': hash,
                 'edges': edges,
                 'nodes': list(set(nodes))
-            }).dict()
+            }) if len(nodes) != 0 else {}
         )
 
 
@@ -191,9 +192,9 @@ class InputParser(Spider):
         if len(trans.item) == 0 or len(trace.item) == 0 or len(rcpt.item) == 0:
             return Result(key=key, item={})
 
-        address = rcpt.item.get_contract_address()
+        address = Receipt().map(rcpt.item).get_contract_address()
         if address != "None" and address is not None:
-            address = get_impl_address(address, trace.item.dict())
+            address = get_impl_address(address, trace.item)
         abi_queue = await self.abi_spider.crawl(params=[{'address': address, 'out': out}])
         if len(abi_queue[0].item) == 0:
             return Result(key=key, item={})
