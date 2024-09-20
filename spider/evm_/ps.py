@@ -10,10 +10,10 @@ from item.evm.ac import ABI
 from item.evm.ps import FundsFlowSubgraph, Timestamp, Input
 from item.evm.tx import Receipt
 from settings import HEADER
-from spider._meta import Parser
-from spider.evm.ac import TxListSpider, ABISpider
-from spider.evm.blk import BlockSpider
-from spider.evm.tx import TransactionSpider, TraceSpider, ReceiptSpider
+from spider._meta import Parser, Param
+from spider.evm_.ac import ABISpider
+from spider.evm_.blk import BlockSpider
+from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
 from utils.req import Request, Headers, Result
 from utils.web3 import parse_hexbytes_dict
@@ -84,16 +84,17 @@ class InputParser(Parser):
             logging.error(e)
             return None
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for p in params:
-            key, hash = p.get("id"), p.get("hash")
+            key, hash = p.id, p.query.get("hash")
             tasks = [
-                asyncio.create_task(self.trans_spider.parse(id=hash, hash=hash)),
-                asyncio.create_task(self.trace_spider.parse(id=hash, hash=hash)),
-                asyncio.create_task(self.rcpt_spider.parse(id=hash, hash=hash))
+                asyncio.create_task(self.trans_spider.parse([Param(query={'hash': hash})])),
+                asyncio.create_task(self.trace_spider.parse([Param(query={'hash': hash})])),
+                asyncio.create_task(self.rcpt_spider.parse([Param(query={'hash': hash})]))
             ]
             trans, trace, rcpt = await asyncio.gather(*tasks)
+            trans, trace, rcpt = trans[0], trace[0], rcpt[0]
 
             if len(trans.item) == 0 or len(trace.item) == 0 or len(rcpt.item) == 0:
                 res_arr.append(Result(key=key, item={}))
@@ -102,14 +103,15 @@ class InputParser(Parser):
             address = Receipt().map(rcpt.item).get_contract_address()
             if address != "None" and address is not None:
                 address = get_impl_address(address, trace.item)
-            abi = await self.abi_spider.parse(id=address, address=address)
+            abi = await self.abi_spider.parse([Param(query={'address': address})])
+            abi = abi[0]
             if len(abi.item) == 0:
                 res_arr.append(Result(key=key, item={}))
                 continue
 
-            res = self.parse_input(trans.item.dict().get('input'), ABI().map({
+            res = self.parse_input(trans.item.get('input'), ABI().map({
                'address': address,
-               'abi': abi.item.dict().get('abi')
+               'abi': abi.item.get('abi')
             }))
             if res is None:
                 res_arr.append(Result(key=key, item={}))

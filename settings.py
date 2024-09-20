@@ -78,7 +78,7 @@ RPC = {
                 },
             }
         },
-        "sc": {
+        "ac": {
             "abi": {
                 "params": {
                     'module': 'contract',

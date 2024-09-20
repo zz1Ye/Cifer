@@ -1,22 +1,24 @@
 from queue import Queue
 from typing import List, Dict
 
-from spider._meta import Spider, Result
+from dao.meta import Dao, JsonDao
+from spider._meta import Spider, Result, Crawlable, Param
 from spider.sched import Scheduler, Job, Task
 
 
 class AsyncSpider(Spider):
-    def __init__(self, spider: Spider, batch_jobs: int = 64):
+    def __init__(self, spider: Crawlable, batch_jobs: int = 64):
         super().__init__(spider.vm, spider.net)
+        self.module, self.mode = spider.module, spider.mode
         self.spider = spider
         self.batch_jobs = batch_jobs
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for i in range(0, len(params), self.batch_jobs):
             source = Queue()
             for e in params[i: i+self.batch_jobs]:
-                source.put(Job(e['_id'], [Task(e['_id'], self.spider, e)]))
+                source.put(Job(e.id, [Task(e.id, self.spider, e)]))
 
             sched = Scheduler(source)
             queue = await sched.run()
@@ -27,14 +29,22 @@ class AsyncSpider(Spider):
 
 
 class CacheSpider(Spider):
-    def __init__(self, spider: Spider):
+    def __init__(self, spider: Crawlable):
         super().__init__(spider.vm, spider.net)
         self.spider = spider
+        self.module, self.mode = spider.module, spider.mode
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    def dir_path(self, out: str, id: str):
+        return '{}/{}/{}/{}/{}/{}.json'.format(
+            out, self.vm.value, self.net.value,
+            self.module.value, id, self.mode.value
+        )
+
+    async def parse(self, params: List[Param]) -> List[Result]:
         process_arr, id2item = [], dict()
         for p in params:
-            _id, dao = p.get("_id"), p.get("dao")
+            _id, out = p.id, p.out
+            dao = JsonDao(fpath=self.dir_path(out, _id))
             if dao and dao.exist():
                 item = next(iter(dao.load()), [{}])[0]
                 id2item[_id] = Result(key=_id, item=item)
@@ -46,9 +56,10 @@ class CacheSpider(Spider):
 
         res_arr = []
         for p in params:
-            e = id2item[p.get("_id")]
+            e = id2item[p.id]
             res_arr.append(e)
-            dao = p.get("dao")
+            _id, out = p.id, p.out
+            dao = JsonDao(fpath=self.dir_path(out, _id))
             if len(e.item) != 0 and dao and not dao.exist():
                 dao.create()
                 dao.insert(e.item)

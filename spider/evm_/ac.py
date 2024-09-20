@@ -2,7 +2,7 @@ from typing import List, Dict
 
 from item.evm.ac import ABI
 from settings import HEADER
-from spider._meta import Spider
+from spider._meta import Spider, Param
 from utils.conf import Net, Vm, Module, Mode
 from utils.req import Request, Headers, Url, Result
 
@@ -13,18 +13,19 @@ class ABISpider(Spider):
         self.module, self.mode = Module.AC, Mode.ABI
         self.rpc = self.rpc.get(self.module.value, {}).get(self.mode.value, {})
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for p in params:
-            key, address = p.get('id'), p.get('address')
-            params = {
+            key, address = p.id, p.query.get('address')
+            query = {
                 'module': self.rpc.get("params").get("module"),
                 'action': self.rpc.get("params").get("action"),
                 'address': address,
                 'apikey': self.scan.get_key()
             }
             req = Request(
-                url=Url(domain=self.scan.domain, params=params).get(),
+                url=Url(domain=self.scan.domain, params=query).get(),
                 method="GET",
                 headers=Headers(
                     accept=HEADER.get("accept"),
@@ -41,7 +42,7 @@ class ABISpider(Spider):
                     if res not in [
                         None, 'Contract source code not verified',
                         'Max rate limit reached'
-                    ] else None
+                    ] else {}
                 )
             )
         return res_arr

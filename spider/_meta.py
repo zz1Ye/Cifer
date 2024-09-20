@@ -11,6 +11,15 @@ from utils.conf import Vm, Net
 from utils.req import RPCNode
 
 
+class Param:
+    def __init__(self, query: dict, out: str = ""):
+        if not isinstance(query, dict):
+            raise TypeError()
+        self.id = '_'.join(str(v) for k, v in sorted(query.items()))
+        self.query = query
+        self.out = out if out != "" else f"out/"
+
+
 class Result:
     def __init__(self, key, item: dict):
         self.key = key
@@ -18,37 +27,31 @@ class Result:
 
 
 class Crawlable(ABC):
-    async def crawl(self, params: Union[Dict, List[Dict]]) -> List[Result]:
+    def __init__(self, vm: Vm, net: Net):
+        self.vm, self.net = vm, net
+        self.module, self.mode = None, None
+        self.url = URL.get(self.vm.value, {}).get(self.net.value, {})
+        self.provider = RPCNode(
+            domain=self.url.get("provider", {}).get("domain"),
+            keys=self.url.get("provider", {}).get("keys"),
+        )
+
+    async def crawl(self, params: Union[Param, List[Param]]) -> List[Result]:
         if isinstance(params, dict):
             params = [params]
-        params = [
-            {
-                **{
-                    k: v.lower() if isinstance(v, str) else v
-                    for k, v in e.items()
-                },
-                '_id': '_'.join(str(v) for k, v in sorted(e.items()))
-            }
-            for e in params
-        ]
         return await self.parse(params)
 
     @abstractmethod
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         raise NotImplementedError("Subclasses must implement this method.")
 
 
 class Spider(Crawlable):
     def __init__(self, vm: Vm, net: Net):
-        self.vm, self.net = vm, net
-        self.url = URL.get(self.vm.value, {}).get(self.net.value, {})
+        super().__init__(vm, net)
         self.scan = RPCNode(
             domain=self.url.get("scan", {}).get("domain"),
             keys=self.url.get("scan", {}).get("keys"),
-        )
-        self.provider = RPCNode(
-            domain=self.url.get("provider", {}).get("domain"),
-            keys=self.url.get("provider", {}).get("keys"),
         )
         self.rpc = RPC.get(self.vm.value, {})
 
@@ -78,24 +81,19 @@ class Spider(Crawlable):
         return content.get("result", None)
 
     @abstractmethod
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         raise NotImplementedError("Subclasses must implement this method.")
 
 
 class Parser(Crawlable):
     def __init__(self, vm: Vm, net: Net):
-        self.vm, self.net = vm, net
-        self.url = URL.get(self.vm.value, {}).get(self.net.value, {})
-        self.provider = RPCNode(
-            domain=self.url.get("provider", {}).get("domain"),
-            keys=self.url.get("provider", {}).get("keys"),
-        )
+        super().__init__(vm, net)
         self.w3 = Web3(Web3.HTTPProvider(
             self.provider.get()
         ))
 
     @abstractmethod
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         raise NotImplementedError("Subclasses must implement this method.")
 
 

@@ -6,7 +6,7 @@ from typing import List
 
 from pybloom import BloomFilter
 
-from spider.meta import Spider
+from spider._meta import Crawlable, Param, Result
 
 
 class Status(Enum):
@@ -16,17 +16,17 @@ class Status(Enum):
 
 
 class Task:
-    def __init__(self, task_id: str, spider: Spider, param: dict):
+    def __init__(self, task_id: str, spider: Crawlable, param: Param):
         self.id = task_id
         self.spider = spider
         self.param = param
-        self.result = None
+        self.result = Result(key=param.id, item={})
         self.status = Status.READY
 
     async def run(self):
         self.status = Status.RUNNING
         try:
-            self.result = await self.spider.parse(**self.param)
+            self.result = await self.spider.parse([self.param])
         except Exception as e:
             logging.error(e)
         self.status = Status.FINISHED
@@ -40,12 +40,13 @@ class Job:
         self.result = None
         self.status = Status.READY
 
-    async def start(self):
+    async def run(self):
         tasks = [
             asyncio.create_task(t.run())
             for t in self.tasks
         ]
         self.result = await asyncio.gather(*tasks)
+        self.status = Status.FINISHED
         return self.result
 
 
@@ -78,7 +79,6 @@ class Scheduler:
             if job.id not in self.wl:
                 self.re_q.put(job)
                 self.wl.add(job.id)
-
         self._status = Status.READY
         self._count = 0
 
@@ -92,7 +92,7 @@ class Scheduler:
             job = await self.ru_q.get()
             await job.run()
             assert job.status == Status.FINISHED
-            self.fi_q.put(job.res)
+            self.fi_q.put(job.result)
             self._count += 1
 
             if self._count % 1000 == 0:

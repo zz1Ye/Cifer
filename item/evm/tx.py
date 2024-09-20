@@ -214,7 +214,7 @@ class Receipt(Item):
         ]))
 
     def get_contract_address(self):
-        return self.contract_address if self.contract_address != '' else self.to_
+        return self.contract_address if self.contract_address != '' and self.contract_address else self.to_
 
     block_number: str = Field(default='')
     block_hash: str = Field(default='')

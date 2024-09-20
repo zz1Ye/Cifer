@@ -2,7 +2,7 @@ from typing import List, Dict
 
 from item.evm.tx import Transaction, Trace, Receipt
 from settings import HEADER
-from spider._meta import Spider
+from spider._meta import Spider, Param
 from utils.conf import Net, Vm, Module, Mode
 from utils.req import Request, Headers, Result
 
@@ -13,10 +13,10 @@ class TransactionSpider(Spider):
         self.module, self.mode = Module.TX, Mode.TRANS
         self.rpc = self.rpc.get(self.module.value, {}).get(self.mode.value, {})
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for p in params:
-            key, hash = p.get('id'), p.get('hash')
+            key, hash = p.id, p.query.get('hash')
             payload = self.rpc.get("payload")
             payload["params"] = [hash]
             req = Request(
@@ -45,11 +45,10 @@ class TraceSpider(Spider):
         self.module, self.mode = Module.TX, Mode.TRACE
         self.rpc = self.rpc.get(self.module.value, {}).get(self.mode.value, {})
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for p in params:
-            key = p.get('id')
-            hash = p.get('hash')
+            key, hash = p.id, p.query.get('hash')
             payload = self.rpc.get("payload")
             payload["params"] = [hash]
             req = Request(
@@ -78,10 +77,10 @@ class ReceiptSpider(Spider):
         self.module, self.mode = Module.TX, Mode.RCPT
         self.rpc = self.rpc.get(self.module.value, {}).get(self.mode.value, {})
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for p in params:
-            key, hash = p.get('id'), p.get('hash')
+            key, hash = p.id, p.query.get('hash')
             payload = self.rpc.get("payload")
             payload["params"] = [hash]
             req = Request(

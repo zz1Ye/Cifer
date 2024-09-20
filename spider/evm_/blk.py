@@ -2,7 +2,7 @@ from typing import List, Dict
 
 from item.evm.blk import Block
 from settings import HEADER
-from spider._meta import Spider, Result
+from spider._meta import Spider, Result, Param
 from utils.conf import Vm, Net, Module, Mode
 from utils.req import Request, Headers
 
@@ -13,10 +13,10 @@ class BlockSpider(Spider):
         self.module, self.mode = Module.BLK, Mode.BLOCK
         self.rpc = self.rpc.get(self.module.value, {}).get(self.mode.value, {})
 
-    async def parse(self, params: List[Dict]) -> List[Result]:
+    async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []
         for p in params:
-            key, hash = p.get('id'), p.get('hash')
+            key, hash = p.id, p.query.get('hash')
             payload = self.rpc.get("payload")
             payload["params"] = [hash, True]
 
