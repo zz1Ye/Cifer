@@ -71,8 +71,9 @@ class InputParser(Parser):
                 f"{param['type']} {param['name']}"
                 for param in func_entry['inputs']
             ])
+
             return {
-                'func': f"{func_id}({','.join(formal_params)})",
+                'func': f"{func_id}({formal_params})",
                 'args': parse_hexbytes_dict(dict({
                     k: '0x' + v.hex().lstrip('0')
                     if isinstance(v, bytes) else v
