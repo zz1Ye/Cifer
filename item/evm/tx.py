@@ -210,7 +210,7 @@ class Receipt(Item):
         return list(set([
             log.address
             for log in self.logs
-            if log.address is not None
+            if log.address is not None and log.address != "None"
         ]))
 
     def get_contract_address(self):

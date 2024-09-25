@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 
 from item.evm.tx import Transaction, Trace, Receipt
 from settings import HEADER

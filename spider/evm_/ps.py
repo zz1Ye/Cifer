@@ -1,21 +1,19 @@
 import asyncio
 import logging
 import warnings
-from typing import List, Dict
+from typing import List
 
 from hexbytes import HexBytes
-from web3 import Web3
 
 from item.evm.ac import ABI
-from item.evm.ps import FundsFlowSubgraph, Timestamp, Input
+from item.evm.ps import Input, EventLogs, EventLog
 from item.evm.tx import Receipt
-from settings import HEADER
 from spider._meta import Parser, Param
+from spider.dec import CacheSpider
 from spider.evm_.ac import ABISpider
-from spider.evm_.blk import BlockSpider
 from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
-from utils.req import Request, Headers, Result
+from utils.req import Result
 from utils.web3 import parse_hexbytes_dict
 
 
@@ -40,10 +38,10 @@ class InputParser(Parser):
         super().__init__(vm, net)
         self.module, self.mode = Module.PS, Mode.IN
 
-        self.trans_spider = TransactionSpider(vm, net)
-        self.trace_spider = TraceSpider(vm, net)
-        self.rcpt_spider = ReceiptSpider(vm, net)
-        self.abi_spider = ABISpider(vm, net)
+        self.trans_spider = CacheSpider(TransactionSpider(vm, net))
+        self.trace_spider = CacheSpider(TraceSpider(vm, net))
+        self.rcpt_spider = CacheSpider(ReceiptSpider(vm, net))
+        self.abi_spider = CacheSpider(ABISpider(vm, net))
 
     def parse_input(self, input: str, abi: ABI):
         if len(input[:10]) != 10:
@@ -129,3 +127,120 @@ class InputParser(Parser):
             )
         return res_arr
 
+
+class EventLogParser(Parser):
+    def __init__(self, vm: Vm, net: Net):
+        super().__init__(vm, net)
+        self.module, self.mode = Module.PS, Mode.EL
+
+        self.trace_spider = CacheSpider(TraceSpider(vm, net))
+        self.rcpt_spider = CacheSpider(ReceiptSpider(vm, net))
+        self.abi_spider = CacheSpider(ABISpider(vm, net))
+
+    def get_event_signature(self, event: dict):
+        param_type, param_name = [], []
+        for param in event["inputs"]:
+            if "components" not in param:
+                param_type.append(param["type"])
+                param_name.append(param["name"])
+            else:
+                param_type.append(f"({','.join([p['type'] for p in param['components']])})")
+                param_name.append(f"({','.join([p['name'] for p in param['components']])})")
+
+        inputs = ",".join(param_type)
+        pt = ",".join([e.lstrip('(').rstrip(')') for e in param_type]).split(",")
+        pn = ",".join([e.lstrip('(').rstrip(')') for e in param_name]).split(",")
+        pv = [f"{a} {b}" for a, b in zip(pt, pn)]
+
+        # Hash event signature
+        event_signature_text = f"{event['name']}({inputs})"
+        event_signature = self.w3.to_hex(
+            self.w3.keccak(text=event_signature_text)
+        )
+        return pv, event_signature
+
+    def decoded_log(self, event, contract, receipt):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                decoded_log = dict(
+                    contract.events[event["name"]]().process_receipt(receipt)[0]
+                )
+                return decoded_log
+            except Exception as e:
+                logging.error(e)
+        return None
+
+    def parse_event_logs(self, hash: str, abi_dict: dict):
+        event_logs = []
+        receipt = self.w3.eth.get_transaction_receipt(HexBytes(hash))
+        for idx, log in enumerate(receipt["logs"]):
+            addr = log["address"].lower()
+            if addr not in abi_dict:
+                continue
+
+            contract = self.w3.eth.contract(
+                self.w3.to_checksum_address(addr), abi=abi_dict[addr]
+            )
+            receipt_event_signature = self.w3.to_hex(log["topics"][0])
+
+            events = [e for e in contract.abi if e["type"] == "event"]
+            for event in events:
+                pv, event_signature = self.get_event_signature(event)
+                # Find match between log's event signature and ABI's event signature
+                if event_signature != receipt_event_signature:
+                    continue
+
+                decoded_log = self.decoded_log(event, contract, receipt)
+                if decoded_log is None:
+                    continue
+                event_logs.append(
+                    EventLog().map({
+                        'hash': hash,
+                        'address': addr,
+                        'event': f"{event['name']}({','.join(pv)})",
+                        'args': parse_hexbytes_dict(dict(decoded_log['args']))
+                    }).dict()
+                )
+                break
+        return event_logs
+
+    async def parse(self, params: List[Param]) -> List[Result]:
+        res_arr = []
+        for p in params:
+            key, hash = p.id, p.query.get("hash")
+            tasks = [
+                asyncio.create_task(self.trace_spider.parse([Param(query={'hash': hash})])),
+                asyncio.create_task(self.rcpt_spider.parse([Param(query={'hash': hash})]))
+            ]
+            trace, rcpt = await asyncio.gather(*tasks)
+            trace, rcpt = trace[0], rcpt[0]
+            if len(trace.item) == 0 or len(rcpt.item) == 0:
+                res_arr.append(Result(key=key, item={}))
+                continue
+
+            addresses = [Receipt().map(rcpt.item).get_contract_address()]
+            addresses += Receipt().map(rcpt.item).get_event_sources()
+            impl_address = [
+                get_impl_address(addr, trace.item)
+                if addr != "None" and addr is not None
+                else addr
+                for addr in addresses
+            ]
+
+            abi_dict = {}
+            abi_arr = await self.abi_spider.parse([
+                Param(query={'address': addr}) for addr in impl_address
+            ])
+            for i, addr in enumerate(addresses):
+                abi = abi_arr[i]
+                if len(abi.item) != 0:
+                    abi_dict[addr.lower()] = abi.item.get('abi')
+
+            res = self.parse_event_logs(hash, abi_dict)
+            if res is None or len(res) == 0 :
+                res_arr.append(Result(key=key, item={}))
+                continue
+
+            res_arr.append(Result(key=key, item=EventLogs().map({'array': res}).dict()))
+        return res_arr

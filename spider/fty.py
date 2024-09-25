@@ -2,7 +2,7 @@ from spider._meta import Crawlable
 from spider.dec import AsyncSpider, CacheSpider
 from spider.evm_.ac import ABISpider
 from spider.evm_.blk import BlockSpider
-from spider.evm_.ps import InputParser
+from spider.evm_.ps import InputParser, EventLogParser
 from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
 
@@ -23,7 +23,8 @@ class Factory:
                 Mode.BLOCK: BlockSpider(vm, net),
             },
             Module.PS: {
-                Mode.IN: InputParser(vm, net)
+                Mode.IN: InputParser(vm, net),
+                Mode.EL: EventLogParser(vm, net)
             }
 
         }[module][mode]

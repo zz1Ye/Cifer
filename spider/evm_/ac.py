@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 
 from item.evm.ac import ABI
 from settings import HEADER
@@ -12,7 +12,6 @@ class ABISpider(Spider):
         super().__init__(vm, net)
         self.module, self.mode = Module.AC, Mode.ABI
         self.rpc = self.rpc.get(self.module.value, {}).get(self.mode.value, {})
-
 
     async def parse(self, params: List[Param]) -> List[Result]:
         res_arr = []

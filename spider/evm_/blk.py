@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 
 from item.evm.blk import Block
 from settings import HEADER

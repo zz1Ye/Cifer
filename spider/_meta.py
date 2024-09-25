@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List, Union, Dict
+from typing import List, Union
 
 import aiohttp
 from aiohttp_retry import RetryClient, RandomRetry
