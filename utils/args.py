@@ -2,11 +2,11 @@ import argparse
 
 from tqdm import tqdm
 
-from spider.evm.blk import BlockSpider
-from spider.evm.ps import TimestampParser, SubgraphParser, InputParser, EventLogParser, CompleteFormParser
-from spider.evm.ac import ContractSpider
-from spider.evm.tx import TransactionSpider
-from spider.meta import Spider
+from spider._meta import Spider
+from spider.evm_.ac import ABISpider
+from spider.evm_.blk import BlockSpider
+from spider.evm_.ps import TimestampParser, InputParser, EventLogParser
+from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
 
 
@@ -35,16 +35,14 @@ async def parse_args():
     batch_size = args.batchsize
 
     meta = {
-        Mode.TRANS: TransactionSpider(vm, net, module),
-        Mode.TRACE: TransactionSpider(vm, net, module),
-        Mode.RCPT: TransactionSpider(vm, net, module),
-        Mode.BLOCK: BlockSpider(vm, net, module),
-        Mode.ABI: ContractSpider(vm, net, module),
-        Mode.TS: TimestampParser(vm, net, module),
-        Mode.SG: SubgraphParser(vm, net, module),
-        Mode.IN: InputParser(vm, net, module),
-        Mode.EL: EventLogParser(vm, net, module),
-        Mode.CF: CompleteFormParser(vm, net, module),
+        Mode.TRANS: TransactionSpider(vm, net),
+        Mode.TRACE: TraceSpider(vm, net),
+        Mode.RCPT: ReceiptSpider(vm, net),
+        Mode.BLOCK: BlockSpider(vm, net),
+        Mode.ABI: ABISpider(vm, net),
+        Mode.TS: TimestampParser(vm, net),
+        Mode.IN: InputParser(vm, net),
+        Mode.EL: EventLogParser(vm, net),
     }[mode]
 
     keys = hashes if hashes else addresses

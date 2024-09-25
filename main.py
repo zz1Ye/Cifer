@@ -1,5 +1,5 @@
 import asyncio
 
-from utils.cli import parse_args
+from utils.args import parse_args
 
 asyncio.get_event_loop().run_until_complete(parse_args())
