@@ -6,11 +6,11 @@ from typing import List
 from hexbytes import HexBytes
 
 from item.evm.ac import ABI
-from item.evm.ps import Input, EventLogs, EventLog, Timestamp
+from item.evm.ps import Input, EventLogs, EventLog, Timestamp, FundsFlowSubgraph
 from item.evm.tx import Receipt
 from spider._meta import Parser, Param
 from spider.dec import CacheSpider
-from spider.evm_.ac import ABISpider
+from spider.evm_.ac import ABISpider, TxListSpider
 from spider.evm_.blk import BlockSpider
 from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
@@ -280,4 +280,68 @@ class TimestampParser(Parser):
                     }).dict()
                 )
             )
+        return res_arr
+
+
+class FundsFlowSubgraphSpider(Parser):
+    def __init__(self, vm: Vm, net: Net):
+        super().__init__(vm, net)
+        self.module, self.mode = Module.PS, Mode.FFS
+        self.trans_spider = CacheSpider(TransactionSpider(vm, net))
+        self.txlist_spider = CacheSpider(TxListSpider(vm, net))
+
+    async def parse(self, params: List[Param]) -> List[Result]:
+        res_arr = []
+        for p in params:
+            key, hash = p.id, p.query.get("hash")
+            trans = await self.trans_spider.parse([Param(query={'hash': hash})])
+            trans = trans[0]
+            if len(trans.item) == 0:
+                res_arr.append(Result(key=key, item={}))
+                continue
+
+            block_number = trans.item.get("block_number")
+            tx_list = await self.txlist_spider.parse([
+                Param(query={
+                    'address': trans.item.get("from_"),
+                    'start_blk': block_number, 'end_blk': block_number,
+                }),
+                Param(query={
+                    'address': trans.item.get("to_"),
+                    'start_blk': block_number, 'end_blk': block_number,
+                }),
+            ])
+            print(tx_list)
+            exit(0)
+            from_res, to_res = tx_list[0], tx_list[1]
+            if len(from_res.item) == 0 and len(to_res.item) == 0:
+                res_arr.append(Result(key=key, item={}))
+                continue
+
+            nodes, edges = [], []
+            for e in from_res.item.get('array', []) + to_res.item.get('array', []):
+                if e.get('hash', '').lower() != hash.lower():
+                    continue
+
+                nodes.append(e.get('from_'))
+                nodes.append(e.get('to_'))
+                edges.append({
+                    'from': e.get('from_'),
+                    'to': e.get('to_'),
+                    'attributes': {
+                        k: v for k, v in e.items()
+                        if k not in ['hash', 'from_', 'to_']
+                    }
+                })
+
+            res_arr.append(
+                Result(
+                    key=key, item=FundsFlowSubgraph().map({
+                        'hash': hash,
+                        'edges': edges,
+                        'nodes': list(set(nodes))
+                    }) if len(nodes) != 0 else {}
+                )
+            )
+
         return res_arr

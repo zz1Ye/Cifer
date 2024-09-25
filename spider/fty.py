@@ -1,8 +1,8 @@
 from spider._meta import Crawlable
 from spider.dec import AsyncSpider, CacheSpider
-from spider.evm_.ac import ABISpider
+from spider.evm_.ac import ABISpider, TxListSpider
 from spider.evm_.blk import BlockSpider
-from spider.evm_.ps import InputParser, EventLogParser, TimestampParser
+from spider.evm_.ps import InputParser, EventLogParser, TimestampParser, FundsFlowSubgraphSpider
 from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
 
@@ -18,6 +18,7 @@ class Factory:
             },
             Module.AC: {
                 Mode.ABI: ABISpider(vm, net),
+                Mode.TXLIST: TxListSpider(vm, net)
             },
             Module.BLK: {
                 Mode.BLOCK: BlockSpider(vm, net),
@@ -25,7 +26,8 @@ class Factory:
             Module.PS: {
                 Mode.TS: TimestampParser(vm, net),
                 Mode.IN: InputParser(vm, net),
-                Mode.EL: EventLogParser(vm, net)
+                Mode.EL: EventLogParser(vm, net),
+                Mode.FFS: FundsFlowSubgraphSpider(vm, net),
             }
 
         }[module][mode]
