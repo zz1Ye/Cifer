@@ -66,7 +66,7 @@ And here you can use --help to view the meaning of all command arguments:
 
 ```
 usage: main.py [-h] [-v {evm}] [-n {eth,bsc,pol}] [-m {tx,blk,sc,ps}]
-               [-mode {trans,trace,rcpt,abi,block,ts,sg,in,el}] [-hash HASHES]  
+               [-mode {trans,trace,rcpt,abi,block,ts,in,el,ffs}] [-hash HASHES]  
                [-a ADDRESSES] [-o OUTPUT] [-bs BATCHSIZE]
 
 optional arguments:
@@ -74,7 +74,7 @@ optional arguments:
   -v {evm}, --vm Select Virtual Machine.
   -n {eth,bsc,pol}, --net Select Network.
   -m {tx,blk,sc,ps}, --module Select Module.
-  -mode {trans,trace,rcpt,abi,block,ts,sg,in,el}, --mode Select mode.
+  -mode {trans,trace,rcpt,abi,block,ts,in,el,ffs}, --mode Select mode.
   -hash HASHES, --hashes HASHES Transaction or Block Hash List (,)
   -a ADDRESSES, --addresses ADDRESSES Contract Address List (,)
   -o OUTPUT, --output OUTPUT Output Dir
@@ -85,10 +85,11 @@ optional arguments:
 ## 🎉 PCP Power-Up
 
 In the Producer-Consumer Pattern, the main entities involved include: 
-Producer (`Pro`), Consumer (`Con`), `Job`, Source Queue (`SQ`), and Job Queue (`JQ`). 
+Producer (`Pro`), Consumer (`Con`), `Task`, `Job`, Source Queue (`SQ`), and Job Queue (`JQ`). 
 The responsibilities of each entity are as follows:
 
-- `Job`: The fundamental unit of execution for the crawler.
+- `Task`: The fundamental unit of execution for the crawler.
+- `Job`: Contains multiple `Tasks` that can be parallelized.
 - `SQ`: Holds `Jobs` pending assignment.
 - `JQ`: Contains `Jobs` ready for processing.
 - `Pro`: Loads `Jobs` from the `SQ` into the `JQ`. 
