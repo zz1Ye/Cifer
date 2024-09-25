@@ -74,7 +74,7 @@ optional arguments:
   -v {evm}, --vm Select Virtual Machine.
   -n {eth,bsc,pol}, --net Select Network.
   -m {tx,blk,sc,ps}, --module Select Module.
-  -mode {trans,trace,rcpt,abi,block,ts,sg,in,el,cf}, --mode Select mode.
+  -mode {trans,trace,rcpt,abi,block,ts,sg,in,el}, --mode Select mode.
   -hash HASHES, --hashes HASHES Transaction or Block Hash List (,)
   -a ADDRESSES, --addresses ADDRESSES Contract Address List (,)
   -o OUTPUT, --output OUTPUT Output Dir

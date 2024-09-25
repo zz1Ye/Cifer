@@ -6,11 +6,12 @@ from typing import List
 from hexbytes import HexBytes
 
 from item.evm.ac import ABI
-from item.evm.ps import Input, EventLogs, EventLog
+from item.evm.ps import Input, EventLogs, EventLog, Timestamp
 from item.evm.tx import Receipt
 from spider._meta import Parser, Param
 from spider.dec import CacheSpider
 from spider.evm_.ac import ABISpider
+from spider.evm_.blk import BlockSpider
 from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
 from utils.req import Result
@@ -243,4 +244,40 @@ class EventLogParser(Parser):
                 continue
 
             res_arr.append(Result(key=key, item=EventLogs().map({'array': res}).dict()))
+        return res_arr
+
+
+class TimestampParser(Parser):
+    def __init__(self, vm: Vm, net: Net):
+        super().__init__(vm, net)
+        self.module, self.mode = Module.PS, Mode.TS
+
+        self.trans_spider = CacheSpider(TransactionSpider(vm, net))
+        self.block_spider = CacheSpider(BlockSpider(vm, net))
+
+    async def parse(self, params: List[Param]) -> List[Result]:
+        res_arr = []
+        for p in params:
+            key, hash = p.id, p.query.get("hash")
+            trans = await self.trans_spider.parse([Param(query={'hash': hash})])
+            trans = trans[0]
+            if len(trans.item) == 0:
+                res_arr.append(Result(key=key, item={}))
+                continue
+
+            block = await self.block_spider.parse([Param(query={'hash': trans.item.get("block_hash")})])
+            block = block[0]
+            if len(block.item) == 0:
+                res_arr.append(Result(key=key, item={}))
+                continue
+
+            res_arr.append(
+                Result(
+                    key=key, item=Timestamp().map({
+                        'hash': hash,
+                        'timestamp': block.item.get('timestamp'),
+                        'block_number': trans.item.get('block_number')
+                    }).dict()
+                )
+            )
         return res_arr
