@@ -6,7 +6,7 @@ from typing import List
 
 from pybloom import BloomFilter
 
-from spider._meta import Crawlable, Param, Result
+from spider.meta import Crawlable, Param, Result
 
 
 class Status(Enum):

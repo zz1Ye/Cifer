@@ -1,13 +1,13 @@
 from queue import Queue
-from typing import List, Dict
+from typing import List
 
-from dao.meta import Dao, JsonDao
-from spider._meta import Spider, Result, Crawlable, Param
+from dao.meta import JsonDao
+from spider.meta import Spider, Result, Crawlable, Param
 from spider.sched import Scheduler, Job, Task
 
 
 class AsyncSpider(Spider):
-    def __init__(self, spider: Crawlable, batch_jobs: int = 64):
+    def __init__(self, spider: Crawlable, batch_jobs: int = 16):
         super().__init__(spider.vm, spider.net)
         self.module, self.mode = spider.module, spider.mode
         self.spider = spider

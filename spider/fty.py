@@ -1,15 +1,15 @@
-from spider._meta import Crawlable
+from spider.meta import Crawlable
 from spider.dec import AsyncSpider, CacheSpider
-from spider.evm_.ac import ABISpider, TxListSpider
-from spider.evm_.blk import BlockSpider
-from spider.evm_.ps import InputParser, EventLogParser, TimestampParser, FundsFlowSubgraphSpider
-from spider.evm_.tx import TransactionSpider, TraceSpider, ReceiptSpider
+from spider.evm.ac import ABISpider, TxListSpider
+from spider.evm.blk import BlockSpider
+from spider.evm.ps import InputParser, EventLogParser, TimestampParser, FundsFlowSubgraphSpider
+from spider.evm.tx import TransactionSpider, TraceSpider, ReceiptSpider
 from utils.conf import Vm, Net, Module, Mode
 
 
 class Factory:
     @staticmethod
-    def create_crawler(vm: Vm, net: Net, module: Module, mode: Mode) -> Crawlable:
+    def create_crawler(vm: Vm, net: Net, module: Module, mode: Mode, batch_size: int = 16) -> Crawlable:
         crawler = {
             Module.TX: {
                Mode.TRANS: TransactionSpider(vm, net),
@@ -31,4 +31,4 @@ class Factory:
             }
 
         }[module][mode]
-        return CacheSpider(AsyncSpider(spider=crawler))
+        return CacheSpider(AsyncSpider(spider=crawler, batch_jobs=batch_size), batch_size=batch_size)
