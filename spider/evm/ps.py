@@ -338,7 +338,7 @@ class FundsFlowSubgraphSpider(Parser):
                         'hash': hash,
                         'edges': edges,
                         'nodes': list(set(nodes))
-                    }) if len(nodes) != 0 else {}
+                    }).dict() if len(nodes) != 0 else {}
                 )
             )
 

@@ -8,7 +8,7 @@ import ijson
 
 
 class Dao:
-    def __init__(self, fpath: str):
+    def __init__(self, fpath: str = ""):
         self.fpath = fpath
 
     def create(self) -> bool:
@@ -21,20 +21,26 @@ class Dao:
         raise NotImplementedError()
 
     def exist(self) -> bool:
+        raise NotImplementedError()
+
+    def drop(self) -> bool:
+        raise NotImplementedError()
+
+
+class JsonDao(Dao):
+    def __init__(self, fpath: str):
+        super().__init__(fpath)
+
+    def exist(self) -> bool:
         return os.path.isfile(self.fpath)
 
     def drop(self) -> bool:
         try:
             os.remove(self.fpath)
         except (FileNotFoundError, PermissionError, OSError) as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
             return False
         return True
-
-
-class JsonDao(Dao):
-    def __init__(self, fpath: str):
-        super().__init__(fpath)
 
     def create(self) -> bool:
         try:
