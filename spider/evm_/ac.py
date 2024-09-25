@@ -61,7 +61,7 @@ class TxListSpider(Spider):
         res_arr = []
         for p in params:
             key, address = p.id, p.query.get('address')
-            kwargs = {k: v for k, v in p.query if k not in ['address']}
+            kwargs = {k: v for k, v in p.query.items() if k not in ['address']}
             tasks = [
                 asyncio.create_task(self.get_external_txs(address, **kwargs)),
                 asyncio.create_task(self.get_internal_txs(address, **kwargs)),

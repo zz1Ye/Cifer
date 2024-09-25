@@ -28,7 +28,7 @@ class Task:
         try:
             self.result = await self.spider.parse([self.param])
         except Exception as e:
-            logging.error(e)
+            logging.error(e, exc_info=True)
         self.status = Status.FINISHED
         return self.result
 

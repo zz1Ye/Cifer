@@ -311,8 +311,6 @@ class FundsFlowSubgraphSpider(Parser):
                     'start_blk': block_number, 'end_blk': block_number,
                 }),
             ])
-            print(tx_list)
-            exit(0)
             from_res, to_res = tx_list[0], tx_list[1]
             if len(from_res.item) == 0 and len(to_res.item) == 0:
                 res_arr.append(Result(key=key, item={}))
