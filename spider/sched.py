@@ -51,7 +51,7 @@ class Job:
 
 
 class Scheduler:
-    def __init__(self, source: Queue[Job], cp_ratio: int = 2, maxsize: int = 4):
+    def __init__(self, source: Queue[Job], cp_ratio: int = 2, maxsize: int = 8):
         """
         One queue: Source
         Three queue: Ready/Running/Finished
