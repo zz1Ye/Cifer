@@ -9,7 +9,7 @@ from utils.conf import Vm, Net, Module, Mode
 
 class Factory:
     @staticmethod
-    def create_crawler(vm: Vm, net: Net, module: Module, mode: Mode, batch_size: int = 16) -> Crawlable:
+    def create_crawler(vm: Vm, net: Net, module: Module, mode: Mode, batch_size: int = 8) -> Crawlable:
         crawler = {
             Module.TX: {
                Mode.TRANS: TransactionSpider(vm, net),
